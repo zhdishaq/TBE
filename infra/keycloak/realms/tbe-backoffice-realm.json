@@ -1,0 +1,38 @@
+{
+  "realm": "tbe-backoffice",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "accessTokenLifespan": 300,
+  "clients": [
+    {
+      "clientId": "tbe-backoffice-ui",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:3002/*"],
+      "webOrigins": ["http://localhost:3002"],
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "tbe-gateway",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "secret": "${TBE_BACKOFFICE_GATEWAY_CLIENT_SECRET}",
+      "protocol": "openid-connect"
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "backoffice-admin", "description": "Full backoffice access" },
+      { "name": "backoffice-operator", "description": "Booking management" },
+      { "name": "finance", "description": "Financial reports and reconciliation" }
+    ]
+  }
+}
