@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>TBE.DbMigrator</RootNamespace>
+    <AssemblyName>TBE.DbMigrator</AssemblyName>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Reference each service's Infrastructure project to access its DbContext -->
+    <ProjectReference Include="..\..\services\BookingService\BookingService.Infrastructure\BookingService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\services\PaymentService\PaymentService.Infrastructure\PaymentService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\services\PricingService\PricingService.Infrastructure\PricingService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\services\NotificationService\NotificationService.Infrastructure\NotificationService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\services\CrmService\CrmService.Infrastructure\CrmService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\services\BackofficeService\BackofficeService.Infrastructure\BackofficeService.Infrastructure.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.25" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
+  </ItemGroup>
+</Project>

@@ -3,4 +3,53 @@
   <Folder Name="/src/gateway/">
     <Project Path="src/gateway/TBE.Gateway/TBE.Gateway.csproj" />
   </Folder>
+  <Folder Name="/src/services/" />
+  <Folder Name="/src/services/BackofficeService/">
+    <Project Path="src/services/BackofficeService/BackofficeService.API/BackofficeService.API.csproj" />
+    <Project Path="src/services/BackofficeService/BackofficeService.Application/BackofficeService.Application.csproj" />
+    <Project Path="src/services/BackofficeService/BackofficeService.Infrastructure/BackofficeService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/services/BookingService/">
+    <Project Path="src/services/BookingService/BookingService.Application/BookingService.Application.csproj" />
+    <Project Path="src/services/BookingService/BookingService.Infrastructure/BookingService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/services/CrmService/">
+    <Project Path="src/services/CrmService/CrmService.API/CrmService.API.csproj" />
+    <Project Path="src/services/CrmService/CrmService.Application/CrmService.Application.csproj" />
+    <Project Path="src/services/CrmService/CrmService.Infrastructure/CrmService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/services/FlightConnectorService/">
+    <Project Path="src/services/FlightConnectorService/FlightConnectorService.API/FlightConnectorService.API.csproj" />
+    <Project Path="src/services/FlightConnectorService/FlightConnectorService.Application/FlightConnectorService.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/services/HotelConnectorService/">
+    <Project Path="src/services/HotelConnectorService/HotelConnectorService.API/HotelConnectorService.API.csproj" />
+    <Project Path="src/services/HotelConnectorService/HotelConnectorService.Application/HotelConnectorService.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/services/NotificationService/">
+    <Project Path="src/services/NotificationService/NotificationService.API/NotificationService.API.csproj" />
+    <Project Path="src/services/NotificationService/NotificationService.Application/NotificationService.Application.csproj" />
+    <Project Path="src/services/NotificationService/NotificationService.Infrastructure/NotificationService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/services/PaymentService/">
+    <Project Path="src/services/PaymentService/PaymentService.API/PaymentService.API.csproj" />
+    <Project Path="src/services/PaymentService/PaymentService.Application/PaymentService.Application.csproj" />
+    <Project Path="src/services/PaymentService/PaymentService.Infrastructure/PaymentService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/services/PricingService/">
+    <Project Path="src/services/PricingService/PricingService.API/PricingService.API.csproj" />
+    <Project Path="src/services/PricingService/PricingService.Application/PricingService.Application.csproj" />
+    <Project Path="src/services/PricingService/PricingService.Infrastructure/PricingService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/services/SearchService/">
+    <Project Path="src/services/SearchService/SearchService.API/SearchService.API.csproj" />
+    <Project Path="src/services/SearchService/SearchService.Application/SearchService.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/shared/">
+    <Project Path="src/shared/TBE.Common/TBE.Common.csproj" />
+    <Project Path="src/shared/TBE.Contracts/TBE.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/tools/">
+    <Project Path="src/tools/TBE.DbMigrator/TBE.DbMigrator.csproj" />
+  </Folder>
 </Solution>
