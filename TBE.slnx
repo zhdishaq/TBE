@@ -10,6 +10,7 @@
     <Project Path="src/services/BackofficeService/BackofficeService.Infrastructure/BackofficeService.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/services/BookingService/">
+    <Project Path="src/services/BookingService/BookingService.API/BookingService.API.csproj" />
     <Project Path="src/services/BookingService/BookingService.Application/BookingService.Application.csproj" />
     <Project Path="src/services/BookingService/BookingService.Infrastructure/BookingService.Infrastructure.csproj" />
   </Folder>

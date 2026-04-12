@@ -6,6 +6,8 @@
     <RootNamespace>TBE.BookingService.Application</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\..\src\shared\TBE.Common\TBE.Common.csproj" />
     <PackageReference Include="MassTransit" Version="9.1.0" />
   </ItemGroup>
 </Project>
