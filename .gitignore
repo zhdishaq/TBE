@@ -1,0 +1,12 @@
+# TBE environment secrets
+.env
+docker-compose.override.yml
+
+# Build outputs
+**/bin/
+**/obj/
+
+# Rider / VS
+.idea/
+*.user
+.vs/

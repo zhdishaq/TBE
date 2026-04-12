@@ -1,0 +1,12 @@
+# docker-compose.override.yml — git-ignored; copy from .override.yml.example
+# Use this file for local developer-specific settings (port remapping, volume paths)
+# Example: bind RabbitMQ management and Keycloak admin to localhost only
+services:
+  rabbitmq:
+    ports:
+      - "127.0.0.1:15672:15672"
+      - "127.0.0.1:5672:5672"
+  keycloak:
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9000:9000"
