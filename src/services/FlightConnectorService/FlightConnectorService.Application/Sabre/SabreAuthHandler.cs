@@ -9,7 +9,7 @@ public class SabreAuthHandler(
     IOptionsMonitor<SabreOptions> opts,
     ILogger<SabreAuthHandler> logger) : DelegatingHandler
 {
-    private string? _cachedToken;
+    private volatile string? _cachedToken;
     private DateTimeOffset _tokenExpiry = DateTimeOffset.MinValue;
     private readonly SemaphoreSlim _lock = new(1, 1);
 

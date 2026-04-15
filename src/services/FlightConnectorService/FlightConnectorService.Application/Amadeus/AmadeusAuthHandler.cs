@@ -9,7 +9,7 @@ public class AmadeusAuthHandler(
     IOptionsMonitor<AmadeusOptions> opts,
     ILogger<AmadeusAuthHandler> logger) : DelegatingHandler
 {
-    private string? _cachedToken;
+    private volatile string? _cachedToken;
     private DateTimeOffset _tokenExpiry = DateTimeOffset.MinValue;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
