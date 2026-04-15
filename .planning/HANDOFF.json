@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-04-15T22:30:16.899Z",
+  "phase": "4",
+  "phase_name": "B2C Portal (Customer-Facing)",
+  "phase_dir": ".planning/phases/04-b2c-portal-customer-facing",
+  "plan": null,
+  "task": null,
+  "total_tasks": 0,
+  "status": "paused",
+  "stage": "planned-not-executed",
+  "completed_tasks": [
+    {"id": "context", "name": "CONTEXT.md gathered (locked decisions D-01..D-16)", "status": "done"},
+    {"id": "ui-spec", "name": "UI-SPEC.md design contract", "status": "done"},
+    {"id": "research", "name": "04-RESEARCH.md (Open Questions RESOLVED)", "status": "done", "commit": "9622f61"},
+    {"id": "validation", "name": "04-VALIDATION.md (nyquist_compliant: true, 16-row per-task map)", "status": "done"},
+    {"id": "patterns", "name": "04-PATTERNS.md (58/65 in-repo analogs)", "status": "done"},
+    {"id": "plans", "name": "5 PLAN.md files (04-00..04-04) — verified, 0 blockers, 0 warnings", "status": "done", "commit": "a3283eb"}
+  ],
+  "remaining_tasks": [
+    {"id": "execute", "name": "Execute Phase 4 — run all 5 plans across 3 waves", "status": "not_started"}
+  ],
+  "wave_structure": [
+    {"wave": 1, "plans": ["04-00"], "summary": "Wave 0 scaffold: starterKit fork, Auth.js v5 edge-split, CSP, Vitest/Playwright harness, .NET red placeholders, Keycloak audience mapper + admin client"},
+    {"wave": 2, "plans": ["04-01", "04-02", "04-03"], "summary": "Auth+account portal; Flight search+booking UI w/ Stripe Elements; Hotel search+booking + voucher email pipeline"},
+    {"wave": 3, "plans": ["04-04"], "summary": "Car hire + Trip Builder; single-PI partial-capture basket per D-08/D-10; unified ?ref=kind-id checkout; combined email"}
+  ],
+  "blockers": [],
+  "human_actions_pending": [
+    {"action": "Manual Keycloak admin provisioning of tbe-b2c-admin service client (client_credentials, view-users + manage-users roles)", "context": "Required by 04-00 Task 3 user_setup; gates 04-02 Task 3 resend-verify pre-flight via infra/keycloak/verify-audience-smoke.sh", "blocking": true},
+    {"action": "Stripe test-mode keys + webhook signing secret in .env.test", "context": "Required by Wave 0 (04-00 Task 1b) for Stripe PaymentElement smoke + E2E checkout", "blocking": true}
+  ],
+  "decisions": [
+    {"decision": "Single combined Stripe PaymentIntent with capture_method=manual + sequential partial captures (AmountToCapture, FinalCapture=false then true)", "rationale": "Honors locked CONTEXT D-08 (one charge on customer statement) + D-10 (two-stage capture mapped to flight-ticketed + hotel-confirmed). Two-PI alternative explicitly rejected.", "phase": "4"},
+    {"decision": "Unified checkout URL contract: ?ref={kind}-{id} via lib/checkout-ref.ts parseCheckoutRef/buildCheckoutRef", "rationale": "Reconciles 04-02 (?booking=), 04-03 (?hotelBookingId=), 04-04 (?basketId=) divergence into one shape. Implemented in 04-04 Task 3b which modifies 04-02 checkout pages.", "phase": "4"},
+    {"decision": "Hotel voucher PDF: streaming pass-through from NotificationService only (D-16). Local regeneration in BookingService removed.", "rationale": "Single source of truth — emailed attachment and downloaded PDF must be byte-identical.", "phase": "4"},
+    {"decision": "Frontend stack pinned: Auth.js v5.0.0-beta.31, Next 16.1.6, @stripe/stripe-js 9.2.0, @stripe/react-stripe-js 6.2.0, nuqs 2.8.9, @tanstack/react-query 5.99.0, react-day-picker 9.14.0, vitest 2.x, Playwright 1.x", "rationale": "Verified against npm 2026-04-16; Auth.js still beta — pin EXACT version.", "phase": "4"},
+    {"decision": "Metronic starterKit kept as .jsx with allowJs:true; new code in .ts/.tsx", "rationale": "Pitfall 17 — avoid migration scope creep on Phase 4.", "phase": "4"},
+    {"decision": "Playwright E2E moved to <wave_verify>; per-task <automated> is vitest/dotnet only", "rationale": "Nyquist 120s feedback latency budget — Playwright is too slow per-task.", "phase": "4"},
+    {"decision": "04-04 wave bumped to 3 with depends_on=[04-00, 04-02, 04-03]", "rationale": "Capstone plan reuses payment-element-wrapper from 04-02, HotelBookingConfirmed event + EmailType.BasketConfirmation + BookingDbContext from 04-03; ordering required for EF migrations + MassTransit consumers.", "phase": "4"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "/clear, then run /gsd-execute-phase 4 to execute Wave 1 (04-00 scaffold) → Wave 2 (04-01/02/03 in parallel) → Wave 3 (04-04 capstone)",
+  "context_notes": "Phase 4 planning complete in 1 revision iteration. Initial planner reversed locked CONTEXT D-08/D-10 (silently switched to two-PaymentIntent option); revision restored single-PI + partial-capture per CONTEXT. All 21 phase REQ-IDs covered (B2C-01..08, HOTB-01..05, CARB-01..03, PKG-01..04, NOTF-02). Key risks for execution: (1) manual Keycloak admin provisioning required before 04-02 can pass pre-flight smoke; (2) Auth.js v5 still beta — Wave 0 must validate compatibility with Next 16 + nuqs 2.8 before downstream waves; (3) Stripe sequential partial captures within authorization window must use FinalCapture=false then FinalCapture=true correctly — covered in 04-04 acceptance criteria with grep checks."
+}
