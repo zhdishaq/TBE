@@ -2,7 +2,7 @@ using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using TBE.NotificationService.Application.Email;
-using TBE.NotificationService.Infrastructure.Persistence;
+using TBE.NotificationService.Application.Persistence;
 using Xunit;
 
 namespace TBE.Tests.Unit.NotificationService;
@@ -97,7 +97,7 @@ public sealed class EmailIdempotencyTests : IDisposable
         // This is a read-only structural check that does not require a running database.
         var migrationPath = Path.Combine(
             AppContext.BaseDirectory, "..", "..", "..", "..", "..",
-            "src", "services", "NotificationService", "NotificationService.Infrastructure",
+            "src", "services", "NotificationService", "NotificationService.Application",
             "Persistence", "Migrations", "20260418000000_AddNotificationTables.cs");
         migrationPath = Path.GetFullPath(migrationPath);
 

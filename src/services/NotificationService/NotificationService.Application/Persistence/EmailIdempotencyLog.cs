@@ -1,4 +1,4 @@
-namespace TBE.NotificationService.Infrastructure.Persistence;
+namespace TBE.NotificationService.Application.Persistence;
 
 /// <summary>
 /// Append-only audit row keyed uniquely by <c>(EventId, EmailType)</c>.

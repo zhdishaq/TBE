@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace TBE.NotificationService.Infrastructure.Persistence.Migrations
+namespace TBE.NotificationService.Application.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class AddNotificationTables : Migration

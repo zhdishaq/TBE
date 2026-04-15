@@ -1,7 +1,7 @@
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
-namespace TBE.NotificationService.Infrastructure.Persistence;
+namespace TBE.NotificationService.Application.Persistence;
 
 public class NotificationDbContext : DbContext
 {
