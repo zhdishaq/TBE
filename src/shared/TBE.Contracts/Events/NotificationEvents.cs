@@ -31,3 +31,16 @@ public record WalletLowBalance(
     decimal Balance,
     decimal Threshold,
     DateTimeOffset At);
+
+/// <summary>
+/// Published by BookingService's CreatePnrConsumer (03-03) when the raw GDS fare-rule payload
+/// cannot be parsed by any of the per-GDS adapters. The consumer still publishes <c>PnrCreated</c>
+/// with the D-07 fallback deadline (UtcNow + 2h), but this advisory lets ops investigate adapter
+/// drift offline. The RawPayloadDigest is an SHA-256 hex of the first 1 KB of the raw payload
+/// so the original fare-rule bytes are never persisted or transported (T-03-05 PII control).
+/// </summary>
+public record FareRuleParseFailedAlert(
+    Guid BookingId,
+    string GdsCode,
+    string RawPayloadDigest,
+    DateTimeOffset At);
