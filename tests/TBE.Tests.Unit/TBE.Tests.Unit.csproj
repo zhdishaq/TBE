@@ -21,5 +21,8 @@
     <ProjectReference Include="..\..\src\services\FlightConnectorService\FlightConnectorService.Application\FlightConnectorService.Application.csproj" />
     <ProjectReference Include="..\..\src\services\SearchService\SearchService.Application\SearchService.Application.csproj" />
     <ProjectReference Include="..\..\src\services\HotelConnectorService\HotelConnectorService.Application\HotelConnectorService.Application.csproj" />
+    <ProjectReference Include="..\..\src\services\PricingService\PricingService.Application\PricingService.Application.csproj" />
+    <ProjectReference Include="..\..\src\services\PricingService\PricingService.Infrastructure\PricingService.Infrastructure.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.14" />
   </ItemGroup>
 </Project>

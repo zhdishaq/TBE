@@ -2,7 +2,9 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
+using TBE.PricingService.Application.Rules;
 using TBE.PricingService.Infrastructure;
+using TBE.PricingService.Infrastructure.Rules;
 using TBE.Common.Messaging;
 
 Log.Logger = new LoggerConfiguration()
@@ -37,6 +39,9 @@ try
             });
         });
 
+    builder.Services.AddScoped<IPricingRulesEngine, MarkupRulesEngine>();
+    builder.Services.AddControllers();
+
     builder.Services.AddHealthChecks()
         .AddSqlServer(
             builder.Configuration.GetConnectionString("PricingDb")!,
@@ -63,6 +68,7 @@ try
     var app = builder.Build();
     app.UseSerilogRequestLogging();
     app.MapHealthChecks("/health");
+    app.MapControllers();
     app.Run();
 }
 catch (Exception ex)
