@@ -33,6 +33,27 @@ try
         .AddStandardResilienceHandler();
     builder.Services.AddKeyedSingleton<TBE.Contracts.Inventory.IFlightAvailabilityProvider,
         TBE.FlightConnectorService.Application.Amadeus.AmadeusFlightProvider>("amadeus");
+
+    // Sabre adapter
+    builder.Services.Configure<TBE.FlightConnectorService.Application.Sabre.SabreOptions>(
+        builder.Configuration.GetSection("Sabre"));
+    builder.Services.AddHttpClient("sabre-auth");
+    builder.Services.AddTransient<TBE.FlightConnectorService.Application.Sabre.SabreAuthHandler>();
+    builder.Services
+        .AddRefitClient<TBE.FlightConnectorService.Application.Sabre.ISabreFlightApi>()
+        .ConfigureHttpClient(c => c.BaseAddress = new Uri(
+            builder.Configuration["Sabre:BaseUrl"] ?? "https://api.havail.sabre.com"))
+        .AddHttpMessageHandler<TBE.FlightConnectorService.Application.Sabre.SabreAuthHandler>()
+        .AddStandardResilienceHandler();
+    builder.Services.AddKeyedSingleton<TBE.Contracts.Inventory.IFlightAvailabilityProvider,
+        TBE.FlightConnectorService.Application.Sabre.SabreFlightProvider>("sabre");
+
+    // Expose all providers as IEnumerable for the multi-provider controller action
+    builder.Services.AddSingleton<IEnumerable<TBE.Contracts.Inventory.IFlightAvailabilityProvider>>(sp => [
+        sp.GetRequiredKeyedService<TBE.Contracts.Inventory.IFlightAvailabilityProvider>("amadeus"),
+        sp.GetRequiredKeyedService<TBE.Contracts.Inventory.IFlightAvailabilityProvider>("sabre"),
+    ]);
+
     builder.Services.AddControllers();
 
     builder.Services.AddHealthChecks()
