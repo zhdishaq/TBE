@@ -7,4 +7,5 @@ public sealed record CarSearchRequest
     public DateTimeOffset DropoffDateTime { get; init; }
     public string? VehicleCategory { get; init; }
     public string CurrencyCode { get; init; } = "GBP";
+    public int Passengers { get; init; } = 1;
 }

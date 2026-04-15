@@ -16,7 +16,7 @@ public sealed class AmadeusCarProvider(IAmadeusTransferApi api) : ICarAvailabili
             endLocationCode:   request.DropoffLocationCode,
             transferType:      "PRIVATE",
             startDateTime:     request.PickupDateTime.ToString("yyyy-MM-ddTHH:mm:ss"),
-            passengers:        1,
+            passengers:        request.Passengers,
             cancellationToken: ct);
 
         return raw.Data.Select(MapOffer).ToList();
