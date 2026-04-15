@@ -61,9 +61,12 @@
 
 **Goal:** A real end-to-end B2C flight booking completes in production — PNR created, payment authorized via Stripe, ticket issued by the GDS, payment captured, and a confirmation email with e-ticket delivered within 60 seconds — with full compensation logic if any step fails.
 
-**Requirements:** FLTB-01, FLTB-02, FLTB-03, FLTB-04, FLTB-05, FLTB-06, FLTB-07, FLTB-08, FLTB-09, FLTB-10, PAY-01, PAY-02, PAY-03, PAY-04, PAY-05, PAY-06, PAY-07, PAY-08, NOTF-01, NOTF-02, NOTF-03, NOTF-04, NOTF-05, NOTF-06, COMP-01, COMP-02, COMP-03, COMP-04, COMP-05, COMP-06
+**Requirements:** FLTB-01, FLTB-02, FLTB-03, FLTB-04, FLTB-05, FLTB-06, FLTB-07, FLTB-08, FLTB-09, FLTB-10, PAY-01, PAY-02, PAY-03, PAY-04, PAY-05, PAY-06, PAY-07, PAY-08, NOTF-01, NOTF-03, NOTF-04, NOTF-05, NOTF-06, COMP-01, COMP-02, COMP-04, COMP-05, COMP-06
 
 **Depends on:** Phase 2
+
+> NOTF-02 (hotel voucher email) relocated to Phase 4 — Phase 3 is flight-only per CONTEXT.
+> COMP-03 (GDPR erasure + PII tombstone) relocated to Phase 6 — erasure belongs with the backoffice/CRM surfaces that own customer records.
 
 ### Plans
 
@@ -89,7 +92,7 @@
 
 **Goal:** The B2C portal is publicly launchable — customers can search flights, hotels, and car hire; build a trip with both flight and hotel; complete bookings end-to-end on mobile or desktop; and download their booking receipt as a PDF.
 
-**Requirements:** B2C-01, B2C-02, B2C-03, B2C-04, B2C-05, B2C-06, B2C-07, B2C-08, HOTB-01, HOTB-02, HOTB-03, HOTB-04, HOTB-05, CARB-01, CARB-02, CARB-03, PKG-01, PKG-02, PKG-03, PKG-04
+**Requirements:** B2C-01, B2C-02, B2C-03, B2C-04, B2C-05, B2C-06, B2C-07, B2C-08, HOTB-01, HOTB-02, HOTB-03, HOTB-04, HOTB-05, CARB-01, CARB-02, CARB-03, PKG-01, PKG-02, PKG-03, PKG-04, NOTF-02
 
 **Depends on:** Phase 3
 
@@ -145,7 +148,7 @@
 
 **Goal:** The operations team can manage all bookings, agents, and finances from a single backoffice — and customer and agency relationships are maintained natively through a CRM that is driven by booking events, not manual data entry.
 
-**Requirements:** BO-01, BO-02, BO-03, BO-04, BO-05, BO-06, BO-07, BO-08, BO-09, BO-10, CRM-01, CRM-02, CRM-03, CRM-04, CRM-05
+**Requirements:** BO-01, BO-02, BO-03, BO-04, BO-05, BO-06, BO-07, BO-08, BO-09, BO-10, CRM-01, CRM-02, CRM-03, CRM-04, CRM-05, COMP-03
 
 **Depends on:** Phase 5
 
