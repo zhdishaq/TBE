@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using TBE.Contracts.Inventory;
@@ -6,6 +7,7 @@ using TBE.Contracts.Inventory.Models;
 namespace TBE.FlightConnectorService.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("flights")]
 public class FlightSearchController(
     IEnumerable<IFlightAvailabilityProvider> providers,

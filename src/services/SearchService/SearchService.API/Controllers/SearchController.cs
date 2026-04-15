@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Net.Http.Json;
@@ -7,6 +8,7 @@ using TBE.SearchService.Application.Cache;
 namespace TBE.SearchService.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("search")]
 public class SearchController(
     IHttpClientFactory httpClientFactory,

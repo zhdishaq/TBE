@@ -1,4 +1,6 @@
 using MassTransit;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -6,6 +8,8 @@ using TBE.PricingService.Application.Rules;
 using TBE.PricingService.Infrastructure;
 using TBE.PricingService.Infrastructure.Rules;
 using TBE.Common.Messaging;
+using TBE.Common.Security;
+using TBE.Common.Telemetry;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(new CompactJsonFormatter())
@@ -40,6 +44,28 @@ try
         });
 
     builder.Services.AddScoped<IPricingRulesEngine, MarkupRulesEngine>();
+
+    // Keycloak JWT + FallbackPolicy (COMP-05).
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+        {
+            o.Authority = builder.Configuration["Keycloak:Authority"];
+            o.Audience = builder.Configuration["Keycloak:Audience"];
+            o.RequireHttpsMetadata = builder.Environment.IsProduction();
+        });
+    builder.Services.AddAuthorization(opt =>
+    {
+        opt.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+
+    // Shared OTel + AES-GCM primitives.
+    builder.Services.AddTbeOpenTelemetry(builder.Configuration, "PricingService");
+    builder.Services.Configure<EncryptionOptions>(builder.Configuration.GetSection("Encryption"));
+    builder.Services.AddSingleton<IEncryptionKeyProvider, EnvEncryptionKeyProvider>();
+    builder.Services.AddSingleton<AesGcmFieldEncryptor>();
+
     builder.Services.AddControllers();
 
     builder.Services.AddHealthChecks()
@@ -67,7 +93,9 @@ try
 
     var app = builder.Build();
     app.UseSerilogRequestLogging();
-    app.MapHealthChecks("/health");
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.MapHealthChecks("/health").AllowAnonymous();
     app.MapControllers();
     app.Run();
 }

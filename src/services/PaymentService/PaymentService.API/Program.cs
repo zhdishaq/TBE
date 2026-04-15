@@ -1,8 +1,12 @@
 using MassTransit;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
 using TBE.Common.Messaging;
+using TBE.Common.Security;
+using TBE.Common.Telemetry;
 using TBE.PaymentService.Application.Consumers;
 using TBE.PaymentService.Application.Stripe;
 using TBE.PaymentService.Application.Wallet;
@@ -33,8 +37,27 @@ try
     builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 
     builder.Services.AddControllers();
-    builder.Services.AddAuthentication();
-    builder.Services.AddAuthorization();
+
+    // Keycloak JWT — enforced on every controller unless [AllowAnonymous] (StripeWebhookController).
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+        {
+            o.Authority = builder.Configuration["Keycloak:Authority"];
+            o.Audience = builder.Configuration["Keycloak:Audience"];
+            o.RequireHttpsMetadata = builder.Environment.IsProduction();
+        });
+    builder.Services.AddAuthorization(opt =>
+    {
+        opt.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+
+    // Shared OTel + AES-GCM primitives.
+    builder.Services.AddTbeOpenTelemetry(builder.Configuration, "PaymentService");
+    builder.Services.Configure<EncryptionOptions>(builder.Configuration.GetSection("Encryption"));
+    builder.Services.AddSingleton<IEncryptionKeyProvider, EnvEncryptionKeyProvider>();
+    builder.Services.AddSingleton<AesGcmFieldEncryptor>();
 
     builder.Services.AddTbeMassTransitWithRabbitMq(
         builder.Configuration,

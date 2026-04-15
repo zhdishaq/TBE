@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TBE.Contracts.Inventory;
 using TBE.Contracts.Inventory.Models;
@@ -5,6 +6,7 @@ using TBE.Contracts.Inventory.Models;
 namespace TBE.HotelConnectorService.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("cars")]
 public class CarSearchController(ICarAvailabilityProvider car) : ControllerBase
 {

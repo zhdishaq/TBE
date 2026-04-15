@@ -1,9 +1,13 @@
 using MassTransit;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using SendGrid;
 using Serilog;
 using Serilog.Formatting.Compact;
 using TBE.Common.Messaging;
+using TBE.Common.Security;
+using TBE.Common.Telemetry;
 using TBE.NotificationService.Application.Consumers;
 using TBE.NotificationService.Application.Contacts;
 using TBE.NotificationService.Application.Email;
@@ -42,6 +46,28 @@ try
     builder.Services.AddScoped<IEmailDelivery, SendGridEmailDelivery>();
     builder.Services.AddSingleton<IEmailTemplateRenderer, RazorLightEmailTemplateRenderer>();
     builder.Services.AddSingleton<IETicketPdfGenerator, QuestPdfETicketGenerator>();
+
+    // Keycloak JWT + FallbackPolicy (COMP-05). NotificationService exposes no public controllers
+    // today, but if any are added they'll be auth-gated by default.
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+        {
+            o.Authority = builder.Configuration["Keycloak:Authority"];
+            o.Audience = builder.Configuration["Keycloak:Audience"];
+            o.RequireHttpsMetadata = builder.Environment.IsProduction();
+        });
+    builder.Services.AddAuthorization(opt =>
+    {
+        opt.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+
+    // Shared OTel + AES-GCM primitives.
+    builder.Services.AddTbeOpenTelemetry(builder.Configuration, "NotificationService");
+    builder.Services.Configure<EncryptionOptions>(builder.Configuration.GetSection("Encryption"));
+    builder.Services.AddSingleton<IEncryptionKeyProvider, EnvEncryptionKeyProvider>();
+    builder.Services.AddSingleton<AesGcmFieldEncryptor>();
 
     // ---- Persistence (NOTF-06 EmailIdempotencyLog) ----
     builder.Services.AddDbContext<NotificationDbContext>(opt =>

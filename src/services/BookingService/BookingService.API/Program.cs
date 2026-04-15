@@ -1,12 +1,19 @@
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
+using TBE.BookingService.Application.Consumers;
 using TBE.BookingService.Application.Consumers.CompensationConsumers;
 using TBE.BookingService.Application.Saga;
+using TBE.BookingService.Application.Ttl;
+using TBE.BookingService.Application.Ttl.Adapters;
 using TBE.BookingService.Infrastructure;
+using TBE.BookingService.Infrastructure.Ttl;
 using TBE.Common.Messaging;
+using TBE.Common.Security;
+using TBE.Common.Telemetry;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(new CompactJsonFormatter())
@@ -39,7 +46,33 @@ try
             o.Audience = builder.Configuration["Keycloak:Audience"];
             o.RequireHttpsMetadata = builder.Environment.IsProduction();
         });
-    builder.Services.AddAuthorization();
+    builder.Services.AddAuthorization(opt =>
+    {
+        opt.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+
+    // Shared OTel + AES-GCM primitives (COMP-05 / COMP-06).
+    builder.Services.AddTbeOpenTelemetry(builder.Configuration, "BookingService");
+    builder.Services.Configure<EncryptionOptions>(builder.Configuration.GetSection("Encryption"));
+    builder.Services.AddSingleton<IEncryptionKeyProvider, EnvEncryptionKeyProvider>();
+    builder.Services.AddSingleton<AesGcmFieldEncryptor>();
+
+    // Fare-rule parser + per-GDS adapters (keyed DI) — FLTB-06.
+    builder.Services.AddKeyedSingleton<IFareRuleAdapter, AmadeusFareRuleAdapter>("amadeus");
+    builder.Services.AddKeyedSingleton<IFareRuleAdapter, SabreFareRuleAdapter>("sabre");
+    builder.Services.AddKeyedSingleton<IFareRuleAdapter, GalileoFareRuleAdapter>("galileo");
+    builder.Services.AddSingleton<IFareRuleParser, FareRuleParser>();
+
+    // TTL monitor hosted service (FLTB-06) — advisory-only, hard-timeout is saga-Schedule-driven.
+    builder.Services.Configure<TtlMonitorOptions>(builder.Configuration.GetSection("TtlMonitor"));
+    builder.Services.AddHostedService<TtlMonitorHostedService>();
+
+    // FlightConnectorService HTTP client for PNR creation.
+    builder.Services.AddHttpClient("flight-connector", c =>
+        c.BaseAddress = new Uri(
+            builder.Configuration["Services:FlightConnector:BaseUrl"] ?? "http://flight-connector:8080"));
 
     builder.Services.AddControllers();
 
@@ -56,6 +89,7 @@ try
                     r.UseSqlServer();
                 });
             x.AddConsumer<SagaDeadLetterSink>();
+            x.AddConsumer<CreatePnrConsumer>();
         },
         configureOutbox: x =>
         {

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TBE.Contracts.Inventory.Models;
 using TBE.PricingService.Application.Rules;
@@ -6,6 +7,7 @@ using TBE.PricingService.Application.Rules.Models;
 namespace TBE.PricingService.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("pricing")]
 public class PricingController(IPricingRulesEngine engine) : ControllerBase
 {
