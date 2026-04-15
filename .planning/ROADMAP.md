@@ -98,12 +98,13 @@
 
 **UI hint**: yes
 
-### Plans
+**Plans:** 5 plans
 
-1. **Auth + account portal** — implement B2C customer registration with email verification via Keycloak `tbe-b2c` realm; login, password reset, and persistent session using Auth.js v5 with Keycloak OIDC provider; customer dashboard (upcoming trips, past bookings, profile management); booking receipt downloadable as PDF
-2. **Flight search + booking UI** — Next.js search form with IATA airport autocomplete, date pickers, passenger selector (adult/child/infant-on-lap/infant-in-seat), and cabin class; client-side `SearchResultsPanel` using TanStack Query; results sorted by price with filters (stops, airline, departure time, price range); fare rules and all-in pricing displayed before booking; Stripe Payment Element integration (SAQ-A compliant); mobile-responsive booking flow completable in under 5 steps
-3. **Hotel search + booking UI** — hotel search form with destination, dates, and room/occupancy configuration; results with property photos, amenities, room types, and cancellation policy; hotel reservation flow (availability check → hold → Stripe payment → confirmation); hotel booking visible in customer account with supplier reference; confirmation email with hotel voucher PDF within 60 seconds
-4. **Car hire + Trip Builder** — car hire search by pickup location, dates, and vehicle category; transfer search by route with vehicle type options; booking confirmation with supplier voucher reference; Trip Builder page presenting flight and hotel results side-by-side for the same destination and dates; single basket checkout for flight + hotel with combined confirmation email; each component retains its own booking reference and cancellation policy
+- [ ] 04-00-PLAN.md — Wave 0 scaffold: fork `ui/starterKit` → `src/portals/b2c-web/`, wire Auth.js v5 edge-split + CSP, configure Vitest + Playwright + live Keycloak auth smoke, red-placeholder .NET test scaffolds, Keycloak `tbe-b2c` audience mapper + `tbe-b2c-admin` service client (Pitfalls 1/3/4/8/16/17)
+- [ ] 04-01-PLAN.md — Auth + account portal: Keycloak-backed login/register/verify, resend-verification via admin client, RSC dashboard from `GET /customers/me/bookings`, receipt PDF via QuestPdfBookingReceiptGenerator (B2C-01, B2C-02, B2C-07, B2C-08, NOTF-02)
+- [ ] 04-02-PLAN.md — Flight search + booking UI: IATA typeahead (OpenFlights + Redis), search form/results/detail with nuqs URL state + TanStack Query (D-11/12), checkout details → Stripe PaymentElement → /checkout/processing polling → success, email-verify gate (B2C-03, B2C-04, B2C-05, B2C-06, NOTF-02)
+- [ ] 04-03-PLAN.md — Hotel search + booking UI: hotel search/results/detail, HotelBookingsController + HotelBookingSagaState, HotelBookingConfirmed event + NotificationService consumer + HotelVoucher.cshtml + QuestPDF HotelVoucherDocument (HOTB-01..05, NOTF-02 primary)
+- [ ] 04-04-PLAN.md — Car hire + Trip Builder: car + transfer search + car voucher, Baskets table + BasketsController + BasketPaymentOrchestrator using Option A two-PaymentIntents with deterministic idempotency keys, combined email (full & partial-failure per D-09) via BasketConfirmedConsumer (CARB-01..03, PKG-01..04)
 
 ### UAT Criteria
 
