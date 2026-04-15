@@ -1,5 +1,7 @@
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using TBE.BookingService.Application.Saga;
+using TBE.BookingService.Infrastructure.Configurations;
 
 namespace TBE.BookingService.Infrastructure;
 
@@ -9,17 +11,20 @@ public class BookingDbContext : DbContext
     {
     }
 
-    // Booking domain entities will be added in Phase 3
-    // Phase 1: Only outbox tables are created here
+    public DbSet<BookingSagaState> BookingSagaStates => Set<BookingSagaState>();
+    public DbSet<SagaDeadLetter> SagaDeadLetters => Set<SagaDeadLetter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         // MassTransit outbox tables
-        // Creates: InboxState, OutboxMessage, OutboxState
         modelBuilder.AddInboxStateEntity();
         modelBuilder.AddOutboxMessageEntity();
         modelBuilder.AddOutboxStateEntity();
+
+        // Saga state + dead-letter ledger (D-01 dedicated schema)
+        modelBuilder.ApplyConfiguration(new BookingSagaStateMap());
+        modelBuilder.ApplyConfiguration(new SagaDeadLetterMap());
     }
 }
