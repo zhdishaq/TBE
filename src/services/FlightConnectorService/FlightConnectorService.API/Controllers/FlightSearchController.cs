@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using TBE.Contracts.Inventory;
 using TBE.Contracts.Inventory.Models;
 
@@ -7,7 +8,8 @@ namespace TBE.FlightConnectorService.API.Controllers;
 [ApiController]
 [Route("flights")]
 public class FlightSearchController(
-    IEnumerable<IFlightAvailabilityProvider> providers) : ControllerBase
+    IEnumerable<IFlightAvailabilityProvider> providers,
+    ILogger<FlightSearchController> logger) : ControllerBase
 {
     [HttpPost("search")]
     public async Task<IActionResult> Search(
@@ -34,15 +36,20 @@ public class FlightSearchController(
         return Ok(combined);
     }
 
-    private static async Task<IReadOnlyList<UnifiedFlightOffer>> SearchSafeAsync(
+    private async Task<IReadOnlyList<UnifiedFlightOffer>> SearchSafeAsync(
         IFlightAvailabilityProvider provider, FlightSearchRequest request, CancellationToken ct)
     {
         try
         {
             return await provider.SearchAsync(request, ct);
         }
-        catch
+        catch (OperationCanceledException)
         {
+            throw; // propagate cancellation — do not swallow
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Provider {Provider} failed during flight search", provider.Name);
             return [];
         }
     }
