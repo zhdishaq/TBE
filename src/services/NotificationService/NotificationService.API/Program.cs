@@ -2,7 +2,7 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
-using TBE.NotificationService.Infrastructure;
+using TBE.NotificationService.Infrastructure.Persistence;
 using TBE.Common.Messaging;
 
 Log.Logger = new LoggerConfiguration()
