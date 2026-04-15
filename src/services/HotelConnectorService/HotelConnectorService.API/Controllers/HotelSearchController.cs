@@ -15,6 +15,10 @@ public class HotelSearchController(IHotelAvailabilityProvider hotel) : Controlle
             return BadRequest("DestinationCode must be a valid 3-letter IATA city code.");
         if (request.CheckOut <= request.CheckIn)
             return BadRequest("CheckOut must be after CheckIn.");
+        if (request.Rooms.Count == 0)
+            return BadRequest("At least one room occupancy is required.");
+        if (request.Rooms.Any(r => r.Adults < 1))
+            return BadRequest("Each room must have at least 1 adult.");
 
         var results = await hotel.SearchAsync(request, ct);
         return Ok(results);
