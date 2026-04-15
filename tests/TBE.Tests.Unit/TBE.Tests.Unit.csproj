@@ -19,5 +19,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
     <ProjectReference Include="..\..\src\services\FlightConnectorService\FlightConnectorService.Application\FlightConnectorService.Application.csproj" />
+    <ProjectReference Include="..\..\src\services\SearchService\SearchService.Application\SearchService.Application.csproj" />
   </ItemGroup>
 </Project>

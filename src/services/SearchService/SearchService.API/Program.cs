@@ -19,6 +19,16 @@ try
     // SearchService is Redis-only (no DB) — uses Redis for search result caching
     builder.Services.AddTbeMassTransitWithRabbitMq(builder.Configuration);
 
+    // Named HttpClient for FlightConnectorService — D-08: no project reference, HTTP only
+    builder.Services.AddHttpClient("flight-connector", c =>
+    {
+        c.BaseAddress = new Uri(
+            builder.Configuration["Services:FlightConnector:BaseUrl"]
+            ?? "http://flightconnectorservice");
+    });
+
+    builder.Services.AddControllers();
+
     builder.Services.AddHealthChecks()
         .AddRabbitMQ(
             factory: sp =>
@@ -41,6 +51,7 @@ try
     var app = builder.Build();
     app.UseSerilogRequestLogging();
     app.MapHealthChecks("/health");
+    app.MapControllers();
     app.Run();
 }
 catch (Exception ex)
