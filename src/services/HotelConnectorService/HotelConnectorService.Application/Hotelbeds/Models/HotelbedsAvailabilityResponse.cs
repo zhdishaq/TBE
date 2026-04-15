@@ -4,7 +4,7 @@ namespace TBE.HotelConnectorService.Application.Hotelbeds.Models;
 
 public sealed class HotelbedsAvailabilityResponse
 {
-    [JsonPropertyName("hotels")] public HotelbedsHotelsContainer Hotels { get; init; } = default!;
+    [JsonPropertyName("hotels")] public HotelbedsHotelsContainer? Hotels { get; init; }
 }
 
 public sealed class HotelbedsHotelsContainer
