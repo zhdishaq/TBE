@@ -1,8 +1,10 @@
 using MassTransit;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
-using TBE.BookingService.Application.Consumers;
+using TBE.BookingService.Application.Consumers.CompensationConsumers;
+using TBE.BookingService.Application.Saga;
 using TBE.BookingService.Infrastructure;
 using TBE.Common.Messaging;
 
@@ -26,12 +28,34 @@ try
             builder.Configuration.GetConnectionString("BookingDb"),
             sql => sql.EnableRetryOnFailure(maxRetryCount: 3)));
 
-    // MassTransit with RabbitMQ and outbox
+    // Dead-letter store (SagaDeadLetterSink depends on ISagaDeadLetterStore)
+    builder.Services.AddScoped<ISagaDeadLetterStore, SagaDeadLetterStore>();
+
+    // JWT Bearer — Keycloak authority. Enforced globally via class-level [Authorize].
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+        {
+            o.Authority = builder.Configuration["Keycloak:Authority"];
+            o.Audience = builder.Configuration["Keycloak:Audience"];
+            o.RequireHttpsMetadata = builder.Environment.IsProduction();
+        });
+    builder.Services.AddAuthorization();
+
+    builder.Services.AddControllers();
+
+    // MassTransit with RabbitMQ + BookingSaga + outbox
     builder.Services.AddTbeMassTransitWithRabbitMq(
         builder.Configuration,
         configureConsumers: x =>
         {
-            x.AddConsumer<TestBookingConsumer>();
+            x.AddSagaStateMachine<BookingSaga, BookingSagaState>(typeof(BookingSagaDefinition))
+                .EntityFrameworkRepository(r =>
+                {
+                    r.ConcurrencyMode = ConcurrencyMode.Optimistic;
+                    r.ExistingDbContext<BookingDbContext>();
+                    r.UseSqlServer();
+                });
+            x.AddConsumer<SagaDeadLetterSink>();
         },
         configureOutbox: x =>
         {
@@ -67,6 +91,9 @@ try
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.MapControllers();
     app.MapHealthChecks("/health");
     app.Run();
 }
@@ -78,3 +105,8 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+/// <summary>
+/// Exposed so integration/controller tests (WebApplicationFactory) can reference the entry-point assembly.
+/// </summary>
+public partial class Program { }

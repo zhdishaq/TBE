@@ -18,5 +18,6 @@
     <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="9.1.0" />
     <PackageReference Include="MassTransit.EntityFrameworkCore" Version="9.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.25" />
   </ItemGroup>
 </Project>
