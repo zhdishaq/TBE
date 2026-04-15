@@ -1,35 +1,9 @@
 namespace TBE.Contracts.Events;
 
-/// <summary>
-/// Published when a booking is initiated by any channel (B2C or B2B).
-/// Starts the booking saga in Phase 3.
-/// </summary>
-public record BookingInitiated(
-    Guid BookingId,
-    string ProductType,   // "flight" | "hotel" | "car"
-    string Channel,       // "b2c" | "b2b"
-    string UserId,
-    DateTimeOffset InitiatedAt);
-
-/// <summary>
-/// Published when a booking is fully confirmed (PNR created + payment captured + ticket issued).
-/// Triggers confirmation email in Notification Service.
-/// </summary>
-public record BookingConfirmed(
-    Guid BookingId,
-    string SupplierRef,
-    string Channel,
-    DateTimeOffset ConfirmedAt);
-
-/// <summary>
-/// Published when a booking fails at any saga step after compensation is complete.
-/// Triggers failure email and backoffice dead-letter queue entry.
-/// </summary>
-public record BookingFailed(
-    Guid BookingId,
-    string Reason,
-    string FailedAt,
-    DateTimeOffset OccurredAt);
+// BookingInitiated, BookingConfirmed, BookingFailed moved to SagaEvents.cs
+// (richer shapes with pricing/channel metadata + EventId for idempotency).
+// PaymentProcessed remains here as a Phase 2/3 cross-service event
+// not owned by the BookingSaga state machine.
 
 /// <summary>
 /// Published by Payment Service when Stripe payment is processed.
