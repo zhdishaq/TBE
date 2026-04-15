@@ -22,10 +22,17 @@ public sealed class AmadeusCarProvider(IAmadeusTransferApi api) : ICarAvailabili
         return raw.Data.Select(MapOffer).ToList();
     }
 
+    private static decimal SafeParseDecimal(string? s)
+    {
+        if (decimal.TryParse(s, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var value))
+            return value;
+        return 0m;
+    }
+
     public static UnifiedCarOffer MapOffer(AmadeusTransferOffer o)
     {
-        var taxTotal = o.Quotation.Taxes.Sum(t => decimal.Parse(t.MonetaryAmount));
-        var baseAmount = decimal.Parse(o.Quotation.Base.MonetaryAmount);
+        var baseAmount = SafeParseDecimal(o.Quotation.Base.MonetaryAmount);
 
         return new UnifiedCarOffer
         {
@@ -41,7 +48,7 @@ public sealed class AmadeusCarProvider(IAmadeusTransferApi api) : ICarAvailabili
                 Base       = baseAmount,
                 Surcharges = [],
                 Taxes      = o.Quotation.Taxes
-                    .Select(t => new PriceComponent("TAX", decimal.Parse(t.MonetaryAmount)))
+                    .Select(t => new PriceComponent("TAX", SafeParseDecimal(t.MonetaryAmount)))
                     .ToList(),
             },
         };

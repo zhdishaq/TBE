@@ -33,6 +33,14 @@ public sealed class HotelbedsProvider(IHotelbedsApi api) : IHotelAvailabilityPro
             .ToList() ?? [];
     }
 
+    private static decimal SafeParseDecimal(string? s)
+    {
+        if (decimal.TryParse(s, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var value))
+            return value;
+        return 0m;
+    }
+
     public static UnifiedHotelOffer MapOffer(
         HotelbedsHotel hotel, HotelbedsRoom room, HotelbedsRate rate)
     {
@@ -54,7 +62,7 @@ public sealed class HotelbedsProvider(IHotelbedsApi api) : IHotelAvailabilityPro
             Price = new PriceBreakdown
             {
                 Currency = rate.Currency,
-                Base     = decimal.Parse(rate.Net),
+                Base     = SafeParseDecimal(rate.Net),
                 // Hotelbeds net rate is all-in; no separate surcharges/taxes in availability response
                 Surcharges = [],
                 Taxes      = [],

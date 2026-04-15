@@ -30,16 +30,24 @@ public sealed class AmadeusFlightProvider(IAmadeusFlightApi api, ILogger<Amadeus
         return raw.Data.Select(MapOffer).ToList();
     }
 
+    private static decimal SafeParseDecimal(string? s)
+    {
+        if (decimal.TryParse(s, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var value))
+            return value;
+        return 0m;
+    }
+
     public static UnifiedFlightOffer MapOffer(AmadeusFlightOffer o)
     {
         // CRITICAL: YQ and YR codes are carrier surcharges — separate from government taxes
         var surcharges = o.Price.Taxes
             .Where(t => t.Code is "YQ" or "YR")
-            .Select(t => new PriceComponent(t.Code, decimal.Parse(t.Amount)))
+            .Select(t => new PriceComponent(t.Code, SafeParseDecimal(t.Amount)))
             .ToList();
         var taxes = o.Price.Taxes
             .Where(t => t.Code is not "YQ" and not "YR")
-            .Select(t => new PriceComponent(t.Code, decimal.Parse(t.Amount)))
+            .Select(t => new PriceComponent(t.Code, SafeParseDecimal(t.Amount)))
             .ToList();
 
         var firstCabin = o.TravelerPricings
@@ -61,7 +69,7 @@ public sealed class AmadeusFlightProvider(IAmadeusFlightApi api, ILogger<Amadeus
             Price = new PriceBreakdown
             {
                 Currency   = o.Price.Currency,
-                Base       = decimal.Parse(o.Price.Base),
+                Base       = SafeParseDecimal(o.Price.Base),
                 Surcharges = surcharges,
                 Taxes      = taxes,
             },
