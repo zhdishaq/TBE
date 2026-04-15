@@ -25,7 +25,7 @@ public class PricingDbContext : DbContext
         {
             b.HasKey(r => r.Id);
             b.Property(r => r.ProductType).IsRequired().HasMaxLength(10);
-            b.Property(r => r.AirlineCode).HasMaxLength(2);
+            b.Property(r => r.AirlineCode).HasMaxLength(3);
             b.Property(r => r.RouteOrigin).HasMaxLength(3);
             b.Property(r => r.Channel).IsRequired().HasMaxLength(5);
             b.Property(r => r.Value).HasColumnType("decimal(18,4)");

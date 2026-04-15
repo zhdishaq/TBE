@@ -17,7 +17,7 @@ namespace TBE.PricingService.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ProductType = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
-                    AirlineCode = table.Column<string>(type: "nvarchar(2)", maxLength: 2, nullable: true),
+                    AirlineCode = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: true),
                     RouteOrigin = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: true),
                     Type = table.Column<int>(type: "int", nullable: false),
                     Value = table.Column<decimal>(type: "decimal(18,4)", nullable: false),

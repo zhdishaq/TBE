@@ -81,7 +81,7 @@ namespace TBE.PricingService.Infrastructure.Migrations
             {
                 b.Property<Guid>("Id").HasColumnType("uniqueidentifier");
                 b.Property<string>("ProductType").IsRequired().HasMaxLength(10).HasColumnType("nvarchar(10)");
-                b.Property<string?>("AirlineCode").HasMaxLength(2).HasColumnType("nvarchar(2)");
+                b.Property<string?>("AirlineCode").HasMaxLength(3).HasColumnType("nvarchar(3)");
                 b.Property<string?>("RouteOrigin").HasMaxLength(3).HasColumnType("nvarchar(3)");
                 b.Property<int>("Type").HasColumnType("int");
                 b.Property<decimal>("Value").HasColumnType("decimal(18,4)");
