@@ -1,0 +1,16 @@
+@model TBE.NotificationService.API.Templates.Models.TicketingDeadlineModel
+<!--SUBJECT:Ticketing deadline in @Model.Horizon — @Model.Pnr-->
+<!DOCTYPE html>
+<html>
+<body style="font-family:Arial,sans-serif;color:#111827;max-width:640px;margin:0 auto;">
+  @{ await IncludeAsync("_Header", Model); }
+  <div style="padding:24px;">
+    <h1 style="color:#b45309;">Action required — ticketing deadline approaching</h1>
+    <p>Hello @Model.PassengerName,</p>
+    <p>Your booking <strong>@Model.Pnr</strong> must be ticketed within <strong>@Model.Horizon</strong>. The current deadline is <strong>@Model.DeadlineUtc.ToString("u")</strong>.</p>
+    <p>If ticketing is not completed by that time, the PNR will be cancelled automatically by the airline.</p>
+    <p>Please ensure your wallet balance or payment instrument is ready so the ticket can be issued.</p>
+  </div>
+  @{ await IncludeAsync("_Footer", Model); }
+</body>
+</html>

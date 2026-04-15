@@ -1,9 +1,17 @@
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using SendGrid;
 using Serilog;
 using Serilog.Formatting.Compact;
-using TBE.NotificationService.Infrastructure;
 using TBE.Common.Messaging;
+using TBE.NotificationService.Application.Consumers;
+using TBE.NotificationService.Application.Contacts;
+using TBE.NotificationService.Application.Email;
+using TBE.NotificationService.Application.Pdf;
+using TBE.NotificationService.Infrastructure.Contacts;
+using TBE.NotificationService.Infrastructure.Email;
+using TBE.NotificationService.Infrastructure.Pdf;
+using TBE.NotificationService.Application.Persistence;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(new CompactJsonFormatter())
@@ -11,7 +19,7 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
-    var builder = Host.CreateApplicationBuilder(args);
+    var builder = WebApplication.CreateBuilder(args);
 
     builder.Services.AddSerilog((services, configuration) =>
         configuration.ReadFrom.Configuration(builder.Configuration)
@@ -19,13 +27,55 @@ try
                      .Enrich.FromLogContext()
                      .Enrich.WithProperty("Service", "NotificationService"));
 
-    builder.Services.AddDbContext<NotificationDbContext>(options =>
-        options.UseSqlServer(
-            builder.Configuration.GetConnectionString("NotificationDb"),
+    // ---- Email delivery (NOTF-01 backbone) ----
+    builder.Services.Configure<SendGridOptions>(builder.Configuration.GetSection("SendGrid"));
+    builder.Services.AddSingleton<ISendGridClient>(_ =>
+    {
+        var key = builder.Configuration["SendGrid:ApiKey"];
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new InvalidOperationException(
+                "SendGrid:ApiKey is missing — set SENDGRID__APIKEY in the .env before starting NotificationService.");
+        }
+        return new SendGridClient(key);
+    });
+    builder.Services.AddScoped<IEmailDelivery, SendGridEmailDelivery>();
+    builder.Services.AddSingleton<IEmailTemplateRenderer, RazorLightEmailTemplateRenderer>();
+    builder.Services.AddSingleton<IETicketPdfGenerator, QuestPdfETicketGenerator>();
+
+    // ---- Persistence (NOTF-06 EmailIdempotencyLog) ----
+    builder.Services.AddDbContext<NotificationDbContext>(opt =>
+        opt.UseSqlServer(
+            builder.Configuration.GetConnectionString("NotificationDb")
+                ?? throw new InvalidOperationException("ConnectionStrings:NotificationDb missing"),
             sql => sql.EnableRetryOnFailure(maxRetryCount: 3)));
 
+    // ---- BookingService contact lookup clients ----
+    builder.Services.AddHttpClient<IBookingContactClient, BookingContactClient>(c =>
+    {
+        var baseUrl = builder.Configuration["Services:BookingService:BaseUrl"]
+            ?? throw new InvalidOperationException("Services:BookingService:BaseUrl missing");
+        c.BaseAddress = new Uri(baseUrl);
+    });
+    builder.Services.AddHttpClient<IAgencyAdminContactClient, AgencyAdminContactClient>(c =>
+    {
+        var baseUrl = builder.Configuration["Services:BookingService:BaseUrl"]
+            ?? throw new InvalidOperationException("Services:BookingService:BaseUrl missing");
+        c.BaseAddress = new Uri(baseUrl);
+    });
+
+    // ---- MassTransit consumer host ----
     builder.Services.AddTbeMassTransitWithRabbitMq(
         builder.Configuration,
+        configureConsumers: cfg =>
+        {
+            cfg.AddConsumer<BookingConfirmedConsumer>();
+            cfg.AddConsumer<BookingCancelledConsumer>();
+            cfg.AddConsumer<TicketIssuedConsumer>();
+            cfg.AddConsumer<BookingExpiredConsumer>();
+            cfg.AddConsumer<TicketingDeadlineApproachingConsumer>();
+            cfg.AddConsumer<WalletLowBalanceConsumer>();
+        },
         configureOutbox: x =>
         {
             x.AddEntityFrameworkOutbox<NotificationDbContext>(o =>
@@ -37,13 +87,14 @@ try
             });
         });
 
+    // ---- Health checks ----
     builder.Services.AddHealthChecks()
         .AddSqlServer(
             builder.Configuration.GetConnectionString("NotificationDb")!,
             name: "notification-db",
             tags: new[] { "db", "sql" })
         .AddRabbitMQ(
-            factory: sp =>
+            factory: _ =>
             {
                 var cf = new RabbitMQ.Client.ConnectionFactory
                 {
@@ -54,14 +105,18 @@ try
                 return cf.CreateConnectionAsync();
             },
             name: "rabbitmq",
-            tags: new[] { "messaging" })
-        .AddRedis(
-            builder.Configuration["Redis:ConnectionString"]!,
-            name: "redis",
-            tags: new[] { "cache" });
+            tags: new[] { "messaging" });
 
-    var host = builder.Build();
-    host.Run();
+    var app = builder.Build();
+
+    // Apply migrations on startup (idempotent).
+    using (var scope = app.Services.CreateScope())
+    {
+        scope.ServiceProvider.GetRequiredService<NotificationDbContext>().Database.Migrate();
+    }
+
+    app.MapHealthChecks("/health");
+    app.Run();
 }
 catch (Exception ex)
 {

@@ -1,0 +1,16 @@
+@model TBE.NotificationService.API.Templates.Models.WalletLowBalanceModel
+<!--SUBJECT:Wallet balance low — @Model.AgencyName-->
+<!DOCTYPE html>
+<html>
+<body style="font-family:Arial,sans-serif;color:#111827;max-width:640px;margin:0 auto;">
+  @{ await IncludeAsync("_Header", Model); }
+  <div style="padding:24px;">
+    <h1 style="color:#b45309;">Wallet balance below threshold</h1>
+    <p>Agency: <strong>@Model.AgencyName</strong></p>
+    <p>Current balance: <strong>@Model.CurrentBalance.ToString("0.00") @Model.Currency</strong></p>
+    <p>Threshold: <strong>@Model.Threshold.ToString("0.00") @Model.Currency</strong></p>
+    <p>Top up your wallet to avoid booking failures.</p>
+  </div>
+  @{ await IncludeAsync("_Footer", Model); }
+</body>
+</html>

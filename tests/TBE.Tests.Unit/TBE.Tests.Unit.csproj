@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <RootNamespace>TBE.Tests.Unit</RootNamespace>
+    <!-- Required so RazorLight can load metadata references at runtime. -->
+    <PreserveCompilationContext>true</PreserveCompilationContext>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -15,6 +17,7 @@
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="FluentAssertions" Version="8.2.0" />
+    <PackageReference Include="MassTransit.TestFramework" Version="9.1.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
@@ -23,8 +26,18 @@
     <ProjectReference Include="..\..\src\services\HotelConnectorService\HotelConnectorService.Application\HotelConnectorService.Application.csproj" />
     <ProjectReference Include="..\..\src\services\PricingService\PricingService.Application\PricingService.Application.csproj" />
     <ProjectReference Include="..\..\src\services\PricingService\PricingService.Infrastructure\PricingService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\services\NotificationService\NotificationService.Application\NotificationService.Application.csproj" />
+    <ProjectReference Include="..\..\src\services\NotificationService\NotificationService.Infrastructure\NotificationService.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.14" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.3.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Copy RazorLight templates from NotificationService.API/Templates into test output so RazorLight FileSystem project can find them. -->
+    <None Include="..\..\src\services\NotificationService\NotificationService.API\Templates\**\*.cshtml">
+      <Link>Templates\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

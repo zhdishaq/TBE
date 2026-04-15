@@ -1,0 +1,16 @@
+@model TBE.NotificationService.API.Templates.Models.FlightCancellationModel
+<!--SUBJECT:Booking Cancelled — @Model.Pnr-->
+<!DOCTYPE html>
+<html>
+<body style="font-family:Arial,sans-serif;color:#111827;max-width:640px;margin:0 auto;">
+  @{ await IncludeAsync("_Header", Model); }
+  <div style="padding:24px;">
+    <h1 style="color:#b91c1c;">Hello @Model.PassengerName,</h1>
+    <p>Your booking (PNR <strong>@Model.Pnr</strong>) has been cancelled.</p>
+    <p><strong>Reason:</strong> @Model.Reason</p>
+    <p><strong>Refund:</strong> @Model.RefundAmount.ToString("0.00") @Model.Currency — processed via your original payment method. Funds typically arrive within 5–10 business days.</p>
+    <p>If you believe this cancellation was made in error, please contact support.</p>
+  </div>
+  @{ await IncludeAsync("_Footer", Model); }
+</body>
+</html>
