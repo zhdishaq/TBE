@@ -10,6 +10,7 @@
     <ProjectReference Include="..\..\..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
     <ProjectReference Include="..\..\..\..\src\shared\TBE.Common\TBE.Common.csproj" />
     <ProjectReference Include="..\HotelConnectorService.Application\HotelConnectorService.Application.csproj" />
+    <PackageReference Include="Refit.HttpClientFactory" Version="10.1.6" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.Rabbitmq" Version="9.0.0" />

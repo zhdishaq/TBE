@@ -5,4 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>TBE.HotelConnectorService.Application</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
+    <PackageReference Include="Refit" Version="10.1.6" />
+    <PackageReference Include="Refit.HttpClientFactory" Version="10.1.6" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.4.0" />
+  </ItemGroup>
 </Project>

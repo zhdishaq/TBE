@@ -1,3 +1,4 @@
+using Refit;
 using Serilog;
 using Serilog.Formatting.Compact;
 using TBE.Common.Messaging;
@@ -18,6 +19,37 @@ try
 
     // HotelConnectorService is stateless — no DB or outbox
     builder.Services.AddTbeMassTransitWithRabbitMq(builder.Configuration);
+
+    // Hotelbeds adapter
+    builder.Services.Configure<TBE.HotelConnectorService.Application.Hotelbeds.HotelbedsOptions>(
+        builder.Configuration.GetSection("Hotelbeds"));
+    builder.Services.AddTransient<TBE.HotelConnectorService.Application.Hotelbeds.HotelbedsHmacHandler>();
+    builder.Services
+        .AddRefitClient<TBE.HotelConnectorService.Application.Hotelbeds.IHotelbedsApi>()
+        .ConfigureHttpClient(c => c.BaseAddress = new Uri(
+            builder.Configuration["Hotelbeds:BaseUrl"]
+            ?? "https://api.test.hotelbeds.com/hotel-api/1.0"))
+        .AddHttpMessageHandler<TBE.HotelConnectorService.Application.Hotelbeds.HotelbedsHmacHandler>()
+        .AddStandardResilienceHandler();
+    builder.Services.AddSingleton<TBE.Contracts.Inventory.IHotelAvailabilityProvider,
+        TBE.HotelConnectorService.Application.Hotelbeds.HotelbedsProvider>();
+
+    // Amadeus Transfer (car hire) adapter
+    builder.Services.Configure<TBE.HotelConnectorService.Application.Car.AmadeusCarOptions>(
+        builder.Configuration.GetSection("Amadeus")); // reuse same Amadeus config section
+    builder.Services.AddHttpClient("amadeus-car-auth");
+    builder.Services.AddTransient<TBE.HotelConnectorService.Application.Car.AmadeusCarAuthHandler>();
+    builder.Services
+        .AddRefitClient<TBE.HotelConnectorService.Application.Car.IAmadeusTransferApi>()
+        .ConfigureHttpClient(c => c.BaseAddress = new Uri(
+            builder.Configuration["Amadeus:CarBaseUrl"]
+            ?? "https://test.api.amadeus.com/v1"))
+        .AddHttpMessageHandler<TBE.HotelConnectorService.Application.Car.AmadeusCarAuthHandler>()
+        .AddStandardResilienceHandler();
+    builder.Services.AddSingleton<TBE.Contracts.Inventory.ICarAvailabilityProvider,
+        TBE.HotelConnectorService.Application.Car.AmadeusCarProvider>();
+
+    builder.Services.AddControllers();
 
     builder.Services.AddHealthChecks()
         .AddRabbitMQ(
@@ -41,6 +73,7 @@ try
     var app = builder.Build();
     app.UseSerilogRequestLogging();
     app.MapHealthChecks("/health");
+    app.MapControllers();
     app.Run();
 }
 catch (Exception ex)
