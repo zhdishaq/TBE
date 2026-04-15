@@ -53,4 +53,7 @@
   <Folder Name="/src/tools/">
     <Project Path="src/tools/TBE.DbMigrator/TBE.DbMigrator.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TBE.Tests.Unit/TBE.Tests.Unit.csproj" />
+  </Folder>
 </Solution>
