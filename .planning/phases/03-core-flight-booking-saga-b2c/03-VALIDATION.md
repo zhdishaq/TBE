@@ -40,7 +40,15 @@ created: 2026-04-15
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | — | — | — | — | — | — | — | ❌ W0 | ⬜ pending |
+| 03-01-T1 | 03-01 | 1 | FLTB-01..05,08,09,10; COMP-01..04 | T-03-06,07,09,10 | Saga contracts in TBE.Contracts (events + commands, Guid BookingId first) | unit | dotnet build src/shared/TBE.Contracts/TBE.Contracts.csproj /warnaserror | ❌ W0 | ⬜ pending |
+| 03-01-T2 | 03-01 | 1 | FLTB-01..05,08,09,10; COMP-01..04 | T-03-06,07,08,09,10 | BookingSaga state machine + EF persistence (Optimistic D-01) + SagaDeadLetter | unit | dotnet test --filter "Category=Unit&FullyQualifiedName~BookingSaga" --no-build --nologo | ❌ W0 | ⬜ pending |
+| 03-01-T3 | 03-01 | 1 | FLTB-01,02,08; COMP-04 | T-03-04 | BookingsController [Authorize] + JwtBearer wiring + AddSagaStateMachine | integration | dotnet test --filter "Category=Integration&FullyQualifiedName~BookingsController" --nologo | ❌ W0 | ⬜ pending |
+| 03-02-T1 | 03-02 | 2 | PAY-01,02,06,07,08 | T-03-01,02,03,04 | StripePaymentGateway + webhook signature verification (tolerance 300s) + idempotency keys | unit | dotnet test --filter "Category=Unit&FullyQualifiedName~Stripe" --no-build --nologo | ❌ W0 | ⬜ pending |
+| 03-02-T2 | 03-02 | 2 | PAY-03,04,05 | T-03-05,06,12 | Wallet ledger Dapper UPDLOCK/ROWLOCK/HOLDLOCK; concurrency test 30/50 success on 30-cap wallet | integration | dotnet test --filter "Category=Integration&FullyQualifiedName~Wallet" --nologo | ❌ W0 | ⬜ pending |
+| 03-03-T1 | 03-03 | 3 | COMP-05,06 | T-03-05,11,04,13 | AesGcmFieldEncryptor + SensitiveAttributeProcessor + secrets migration to .env | unit | dotnet test --filter "Category=Unit&(FullyQualifiedName~AesGcmFieldEncryptor\|FullyQualifiedName~SensitiveAttributeProcessor)" --no-build --nologo | ❌ W0 | ⬜ pending |
+| 03-03-T2 | 03-03 | 3 | FLTB-06,07 | T-03-05,11,14 | FareRuleParser (Amadeus/Sabre/Galileo adapters) + TtlMonitorHostedService + CreatePnrConsumer 2h fallback | unit | dotnet test --filter "Category=Unit&(FullyQualifiedName~FareRuleParser\|FullyQualifiedName~TtlMonitorHostedService)" --no-build --nologo | ❌ W0 | ⬜ pending |
+| 03-04-T1 | 03-04 | 2 | NOTF-01,02,03,04,05,06 | T-03-15,16 | SendGrid/RazorLight/QuestPDF infra + EmailIdempotencyLog unique (EventId,EmailType) | unit | dotnet test --filter "Category=Unit&FullyQualifiedName~NotificationService" --no-build --nologo | ❌ W0 | ⬜ pending |
+| 03-04-T2 | 03-04 | 2 | NOTF-01..06 | T-03-15,16,04 | 6 lifecycle consumers + Program.cs wiring + Worker.cs removal | unit+integration | dotnet test --filter "FullyQualifiedName~BookingConfirmedConsumer\|FullyQualifiedName~EmailIdempotency" --nologo | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
