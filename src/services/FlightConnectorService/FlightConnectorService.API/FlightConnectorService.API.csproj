@@ -7,6 +7,7 @@
     <AssemblyName>FlightConnectorService.API</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Refit.HttpClientFactory" Version="10.1.6" />
     <ProjectReference Include="..\..\..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
     <ProjectReference Include="..\..\..\..\src\shared\TBE.Common\TBE.Common.csproj" />
     <ProjectReference Include="..\FlightConnectorService.Application\FlightConnectorService.Application.csproj" />
