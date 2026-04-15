@@ -1,0 +1,16 @@
+@model TBE.NotificationService.API.Templates.Models.TicketIssuedModel
+<!--SUBJECT:Ticket Issued — @Model.Pnr-->
+<!DOCTYPE html>
+<html>
+<body style="font-family:Arial,sans-serif;color:#111827;max-width:640px;margin:0 auto;">
+  @{ await IncludeAsync("_Header", Model); }
+  <div style="padding:24px;">
+    <h1 style="color:#0a3d62;">Ticket issued for @Model.PassengerName</h1>
+    <p>PNR: <strong>@Model.Pnr</strong></p>
+    <p>E-ticket: <strong>@Model.ETicketNumber</strong></p>
+    <p>Flight: <strong>@Model.FlightNumber</strong></p>
+    <p>This is an internal lifecycle notice. The customer receives their e-ticket PDF via the booking confirmation email.</p>
+  </div>
+  @{ await IncludeAsync("_Footer", Model); }
+</body>
+</html>

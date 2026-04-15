@@ -1,0 +1,28 @@
+@model TBE.NotificationService.API.Templates.Models.FlightConfirmationModel
+<!--SUBJECT:Booking Confirmed — @Model.Pnr-->
+<!DOCTYPE html>
+<html>
+<body style="font-family:Arial,sans-serif;color:#111827;max-width:640px;margin:0 auto;">
+  @{ await IncludeAsync("_Header", Model); }
+  <div style="padding:24px;">
+    <h1 style="color:#0a3d62;">Hello @Model.PassengerName,</h1>
+    <p>Your booking is confirmed. Here are your details:</p>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px;">
+      <tr>
+        <td style="padding:8px 0;"><strong>PNR:</strong></td>
+        <td style="padding:8px 0;">@Model.Pnr</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>E-ticket:</strong></td>
+        <td style="padding:8px 0;">@Model.ETicketNumber</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Total:</strong></td>
+        <td style="padding:8px 0;">@Model.Total.ToString("0.00") @Model.Currency</td>
+      </tr>
+    </table>
+    <p>Your e-ticket PDF is attached. Present a valid photo ID at check-in.</p>
+  </div>
+  @{ await IncludeAsync("_Footer", Model); }
+</body>
+</html>
