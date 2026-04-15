@@ -30,4 +30,10 @@
     <ProjectReference Include="..\..\src\services\BookingService\BookingService.Infrastructure\BookingService.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\services\BookingService\BookingService.API\BookingService.API.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Copy shared fare-rule fixtures to this project's output for FareRuleParserTests. -->
+    <None Include="..\TBE.Tests.Shared\fixtures\fare-rules\*.*" LinkBase="fixtures\fare-rules">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>
