@@ -1,5 +1,8 @@
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using TBE.PaymentService.Infrastructure.Configurations;
+using TBE.PaymentService.Infrastructure.Stripe;
+using TBE.PaymentService.Infrastructure.Wallet;
 
 namespace TBE.PaymentService.Infrastructure;
 
@@ -9,7 +12,8 @@ public class PaymentDbContext : DbContext
     {
     }
 
-    // Domain entities added in later phases
+    public DbSet<StripeWebhookEvent> StripeWebhookEvents => Set<StripeWebhookEvent>();
+    public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -19,5 +23,8 @@ public class PaymentDbContext : DbContext
         modelBuilder.AddInboxStateEntity();
         modelBuilder.AddOutboxMessageEntity();
         modelBuilder.AddOutboxStateEntity();
+
+        modelBuilder.ApplyConfiguration(new StripeWebhookEventMap());
+        modelBuilder.ApplyConfiguration(new WalletTransactionMap());
     }
 }

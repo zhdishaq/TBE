@@ -5,4 +5,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>TBE.PaymentService.Application</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\..\src\shared\TBE.Common\TBE.Common.csproj" />
+    <PackageReference Include="MassTransit" Version="9.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="Stripe.net" Version="51.0.0" />
+  </ItemGroup>
 </Project>
