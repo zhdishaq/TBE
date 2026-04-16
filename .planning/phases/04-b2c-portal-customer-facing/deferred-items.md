@@ -25,3 +25,13 @@ Items discovered during plan execution that are out of the current plan's scope 
 - **Discovered by:** 04-01 Task 2 (writing `lib/keycloak-admin.ts`).
 - **Context:** The recommended Next.js pattern for server-only modules is to `import 'server-only'`. The package is not installed in `src/portals/b2c-web/package.json`. We used a `typeof window !== 'undefined'` runtime guard instead to avoid expanding the dependency set mid-plan.
 - **Resolution plan:** Add `server-only` in the next plan that does a general dependency review (04-04 checkout is the most likely candidate because it will add several new server-only helpers). Switch the runtime guard to `import 'server-only'` at that point.
+
+## Logged by 04-03 (2026-04-16)
+
+### ESLint flat-config broken — `@eslint/eslintrc` missing
+
+- **Discovered by:** 04-03 Task 3 (pnpm lint after frontend tests).
+- **Context:** `src/portals/b2c-web/eslint.config.mjs` imports `@eslint/eslintrc` which is not in `package.json` devDependencies. ESLint 9.39 throws `ERR_MODULE_NOT_FOUND`. Pre-existing — 04-02 did not hit this because its acceptance gate is `pnpm test`/`pnpm typecheck`, not `pnpm lint`.
+- **Current fallback:** Typecheck (`pnpm typecheck`) is clean; tests (42/42) green. Lint is not a P04-03 acceptance gate.
+- **Resolution plan:** Either add `@eslint/eslintrc` to devDependencies or migrate the config to pure flat config without the compat layer. Candidate plan: next infra/tooling pass (04-04 or later).
+
