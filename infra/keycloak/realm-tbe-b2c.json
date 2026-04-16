@@ -1,0 +1,70 @@
+{
+  "_meta": {
+    "purpose": "Wave 0 (Plan 04-00 Task 3) realm patch. Adds the audience mapper on the tbe-b2c client (Pitfall 4) and provisions the tbe-b2c-admin service client with manage-users role (Pitfall 8). Import with `kc.sh import --file infra/keycloak/realm-tbe-b2c.json` or merge into infra/keycloak/realms/tbe-b2c-realm.json.",
+    "phase": "04-b2c-portal-customer-facing",
+    "plan": "04-00",
+    "supersedes": "infra/keycloak/realms/tbe-b2c-realm.json (partial — this file adds audience mapper + admin client)"
+  },
+  "realm": "tbe-b2c",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "verifyEmail": true,
+  "accessTokenLifespan": 300,
+  "clients": [
+    {
+      "_comment": "B2C customer OIDC client consumed by src/portals/b2c-web via Auth.js v5 (D-04).",
+      "clientId": "tbe-b2c",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:3000/*", "https://b2c.local/*"],
+      "webOrigins": ["http://localhost:3000", "https://b2c.local"],
+      "secret": "${KEYCLOAK_B2C_CLIENT_SECRET}",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "_comment": "Pitfall 4 fix — emits aud=tbe-api on access tokens so YARP JwtBearer can validate.",
+          "name": "tbe-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "tbe-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "_comment": "Pitfall 8 fix — dedicated service client for admin operations (send-verify-email, password reset). client_credentials grant; secret kept out of the browser bundle (no NEXT_PUBLIC_ prefix).",
+      "clientId": "tbe-b2c-admin",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_B2C_ADMIN_CLIENT_SECRET}",
+      "protocol": "openid-connect"
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "customer", "description": "B2C customer role" }
+    ]
+  },
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "_comment": "Service-account role binding — allows tbe-b2c-admin to call Keycloak Admin REST API send-verify-email / users endpoints (Pitfall 8).",
+        "client": "tbe-b2c-admin",
+        "roles": ["manage-users", "view-users"]
+      }
+    ]
+  }
+}
