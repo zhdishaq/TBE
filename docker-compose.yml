@@ -54,9 +54,11 @@ services:
       start_period: 5s
     networks:
       - shared-network
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.6.0
-    command: start-dev --import-realm
+    # Change 'start-dev' to 'start' for production-like proxy behavior
+    command: start --import-realm --optimized 
     environment:
       KC_HEALTH_ENABLED: "true"
       KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER}"
@@ -65,10 +67,19 @@ services:
       KC_DB_URL: "jdbc:sqlserver://mssql;databaseName=KeycloakDb;encrypt=false"
       KC_DB_USERNAME: "${MSSQL_SA_USER}"
       KC_DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
-      KC_PROXY: "edge"
-      KC_HOSTNAME: "openid.3ha.one"
+      
+      # 1. New variable for Keycloak 25+ (replaces/augments KC_PROXY)
+      KC_PROXY_HEADERS: "x-forwarded"
+      
+      # 2. Force the full URL including HTTPS
+      KC_HOSTNAME: "https://openid.3ha.one"
       KC_HOSTNAME_STRICT: "true"
       KC_HOSTNAME_STRICT_HTTPS: "true"
+      
+      # 3. Ensure the Admin UI also uses the correct URL
+      KC_HOSTNAME_ADMIN: "https://openid.3ha.one"
+      
+      # 4. Required when using 'start' instead of 'start-dev'
       KC_HTTP_ENABLED: "true"
     volumes:
       - ./infra/keycloak/realms:/opt/keycloak/data/import
