@@ -69,7 +69,9 @@ services:
       KC_DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
       
       # PROXY SETTINGS
-      KC_PROXY_HEADERS: "x-forwarded"
+      KC_PROXY_HEADERS: "xforwarded"
+      
+      # Keep these as is
       KC_HOSTNAME: "https://openid.3ha.one"
       KC_HOSTNAME_STRICT: "true"
       KC_HOSTNAME_STRICT_HTTPS: "true"
