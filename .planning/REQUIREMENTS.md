@@ -63,14 +63,14 @@
 
 ### B2C Portal (B2C)
 
-- [ ] **B2C-01**: Customer can register with email/password; email verification required before booking
-- [ ] **B2C-02**: Customer can log in, reset password, and maintain a persistent session
+- [x] **B2C-01**: Customer can register with email/password; email verification required before booking
+- [x] **B2C-02**: Customer can log in, reset password, and maintain a persistent session
 - [ ] **B2C-03**: Flight/hotel/car search forms with date pickers, passenger selectors, and destination autocomplete
 - [ ] **B2C-04**: Search results display sorted by price with filters (stops, airline, departure time, price range)
 - [ ] **B2C-05**: Booking flow is mobile-responsive and completable in under 5 steps
 - [ ] **B2C-06**: Credit card payment via Stripe Elements (SAQ-A compliant — card data never touches the server)
-- [ ] **B2C-07**: Customer dashboard: upcoming trips, past bookings, profile management
-- [ ] **B2C-08**: Booking receipt downloadable as PDF
+- [x] **B2C-07**: Customer dashboard: upcoming trips, past bookings, profile management
+- [x] **B2C-08**: Booking receipt downloadable as PDF
 
 ### B2B Agent Portal (B2B)
 
@@ -120,7 +120,7 @@
 ### Notifications (NOTF)
 
 - [ ] **NOTF-01**: Booking confirmation email (flight) with e-ticket attachment sent within 60 seconds
-- [ ] **NOTF-02**: Booking confirmation email (hotel) with voucher PDF sent within 60 seconds
+- [x] **NOTF-02**: Booking confirmation email (hotel) with voucher PDF sent within 60 seconds
 - [ ] **NOTF-03**: Booking cancellation email with refund details sent within 60 seconds
 - [ ] **NOTF-04**: B2B agent ticketing deadline alert emails: 24-hour warning and 2-hour warning before TTL
 - [ ] **NOTF-05**: Wallet low-balance alert email to agency admin when balance drops below configurable threshold
