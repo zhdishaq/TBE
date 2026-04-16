@@ -47,6 +47,7 @@ try
     builder.Services.AddSingleton<IEmailTemplateRenderer, RazorLightEmailTemplateRenderer>();
     builder.Services.AddSingleton<IETicketPdfGenerator, QuestPdfETicketGenerator>();
     builder.Services.AddSingleton<IHotelVoucherPdfGenerator, HotelVoucherDocument>();
+    builder.Services.AddSingleton<ICarVoucherPdfGenerator, CarVoucherDocument>();
     builder.Services.Configure<BrandOptions>(builder.Configuration.GetSection("Branding"));
 
     // Keycloak JWT + FallbackPolicy (COMP-05). NotificationService exposes no public controllers
@@ -104,6 +105,8 @@ try
             cfg.AddConsumer<TicketingDeadlineApproachingConsumer>();
             cfg.AddConsumer<WalletLowBalanceConsumer>();
             cfg.AddConsumer<HotelBookingConfirmedConsumer>();
+            cfg.AddConsumer<BasketConfirmedConsumer>();
+            cfg.AddConsumer<CarBookingConfirmedConsumer>();
         },
         configureOutbox: x =>
         {

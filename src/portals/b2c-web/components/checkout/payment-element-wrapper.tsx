@@ -22,24 +22,37 @@ import { useCallback, useState } from 'react';
 
 import { getStripe } from '@/lib/stripe';
 import { formatMoney } from '@/lib/formatters';
+import { buildCheckoutRef, type CheckoutRefKind } from '@/lib/checkout-ref';
 
 interface PaymentElementWrapperProps {
   amount: number;
   currency: string;
   bookingId: string;
   clientSecret: string;
+  /**
+   * Unified B5 ref kind used to build the return_url. Defaults to "flight"
+   * for back-compat with the 04-02 flight-only callers. 04-04 hotel/car
+   * flows pass "hotel" / "car" so the processing page polls the correct
+   * status endpoint.
+   */
+  refKind?: CheckoutRefKind;
 }
 
-function buildReturnUrl(bookingId: string): string {
+function buildReturnUrl(bookingId: string, kind: CheckoutRefKind): string {
   const origin =
     typeof window !== 'undefined' && window.location?.origin
       ? window.location.origin
       : '';
-  const safeId = encodeURIComponent(bookingId);
-  return `${origin}/checkout/processing?booking=${safeId}`;
+  const ref = encodeURIComponent(buildCheckoutRef(kind, bookingId));
+  return `${origin}/checkout/processing?ref=${ref}`;
 }
 
-function PayForm({ amount, currency, bookingId }: Omit<PaymentElementWrapperProps, 'clientSecret'>) {
+function PayForm({
+  amount,
+  currency,
+  bookingId,
+  refKind = 'flight',
+}: Omit<PaymentElementWrapperProps, 'clientSecret'>) {
   const stripe = useStripe() as Stripe | null;
   const elements = useElements() as StripeElements | null;
   const [submitting, setSubmitting] = useState(false);
@@ -64,7 +77,7 @@ function PayForm({ amount, currency, bookingId }: Omit<PaymentElementWrapperProp
       const result = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: buildReturnUrl(bookingId),
+          return_url: buildReturnUrl(bookingId, refKind),
         },
       });
 
@@ -80,7 +93,7 @@ function PayForm({ amount, currency, bookingId }: Omit<PaymentElementWrapperProp
     } finally {
       setSubmitting(false);
     }
-  }, [stripe, elements, bookingId]);
+  }, [stripe, elements, bookingId, refKind]);
 
   const label = `Pay ${formatMoney(amount, currency)}`;
 
@@ -115,6 +128,7 @@ export function PaymentElementWrapper(props: PaymentElementWrapperProps) {
         amount={props.amount}
         currency={props.currency}
         bookingId={props.bookingId}
+        refKind={props.refKind}
       />
     </Elements>
   );

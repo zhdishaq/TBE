@@ -15,4 +15,5 @@ public static class EmailType
     public const string WalletLowBalance = "WalletLowBalance";                             // NOTF-05 (agency-admin internal alert)
     public const string HotelVoucher = "HotelVoucher";                                     // NOTF-02 (customer voucher + PDF attachment — Plan 04-03)
     public const string BasketConfirmation = "BasketConfirmation";                         // NOTF-02 family (Trip Builder basket confirmation — Plan 04-04 consumer)
+    public const string CarVoucher = "CarVoucher";                                         // NOTF-02 family (car-hire voucher + PDF attachment — Plan 04-04)
 }

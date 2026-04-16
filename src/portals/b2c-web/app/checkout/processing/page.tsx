@@ -1,22 +1,30 @@
-// /checkout/processing — saga-driven status poll (Pitfall 6, D-12).
+// /checkout/processing — unified saga-driven status poll (B5 / Plan 04-04).
 //
 // CRITICAL: this page is the ONLY place we treat a booking as
 // "confirmed". Stripe's client-side redirect may land here with
 // ?payment_intent=... + ?redirect_status=succeeded — we IGNORE those
-// query params as a success signal. Success is derived from polling
-// GET /api/bookings/{id}/status until the saga terminal state is one
-// of `Confirmed` (→ success), `Failed` / `Cancelled` (→ failure).
+// query params as a success signal. Success is derived from polling the
+// saga status endpoint until we see a terminal state.
 //
-// Poll cadence: 2000 ms with a 90-second hard cap; after 90s show the
-// UI-SPEC copy and point the user at /bookings for later follow-up
-// (the saga continues in the background — they'll get the email).
+// B5 unification: we read `?ref={kind}-{id}` only. Legacy booking= query
+// param is removed.
+// The poll target varies by kind:
+//   - flight → /api/bookings/{id}/status
+//   - hotel  → /api/hotel-bookings/{id}/status (parity; the existing
+//              hotel controller already exposes GET /{id})
+//   - car    → /api/car-bookings/{id}/status
+//   - basket → /api/baskets/{id}/status (D-09 terminal set includes
+//              `PartiallyConfirmed` which routes to /checkout/success
+//              with the ref intact; the success page renders the
+//              <PartialFailureBanner>).
 
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { CheckoutStepper } from '@/components/checkout/stepper';
+import { buildCheckoutRef, parseCheckoutRef, type CheckoutRef } from '@/lib/checkout-ref';
 
 type Status =
   | 'Initiated'
@@ -24,13 +32,15 @@ type Status =
   | 'PriceReconfirmed'
   | 'TicketIssued'
   | 'Confirmed'
+  | 'PartiallyConfirmed'
   | 'Failed'
-  | 'Cancelled';
+  | 'Cancelled'
+  | 'Pending';
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_CAP_MS = 90_000;
 
-const TERMINAL_SUCCESS: Status[] = ['Confirmed'];
+const TERMINAL_SUCCESS: Status[] = ['Confirmed', 'PartiallyConfirmed'];
 const TERMINAL_FAILURE: Status[] = ['Failed', 'Cancelled'];
 
 interface StatusDto {
@@ -44,20 +54,32 @@ type UiState =
   | { kind: 'failed'; reason: string }
   | { kind: 'timed-out' };
 
+function statusEndpoint(ref: CheckoutRef): string {
+  switch (ref.kind) {
+    case 'flight':
+      return `/api/bookings/${encodeURIComponent(ref.id)}/status`;
+    case 'hotel':
+      return `/api/hotel-bookings/${encodeURIComponent(ref.id)}`;
+    case 'car':
+      return `/api/car-bookings/${encodeURIComponent(ref.id)}`;
+    case 'basket':
+      return `/api/baskets/${encodeURIComponent(ref.id)}`;
+  }
+}
+
 export default function CheckoutProcessingPage() {
   const router = useRouter();
   const search = useSearchParams();
-  const bookingId = search.get('booking');
+  const ref = useMemo<CheckoutRef | null>(() => parseCheckoutRef(search.get('ref')), [search]);
+
   const [state, setState] = useState<UiState>({ kind: 'polling', elapsedMs: 0 });
   const startedAt = useRef<number>(Date.now());
   const mounted = useRef<boolean>(true);
 
   const poll = useCallback(async () => {
-    if (!bookingId) return;
+    if (!ref) return;
     try {
-      const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}/status`, {
-        cache: 'no-store',
-      });
+      const res = await fetch(statusEndpoint(ref), { cache: 'no-store' });
       if (!res.ok) {
         return; // transient — keep polling
       }
@@ -65,7 +87,9 @@ export default function CheckoutProcessingPage() {
       if (!mounted.current) return;
 
       if (TERMINAL_SUCCESS.includes(body.status)) {
-        router.push(`/checkout/success?booking=${encodeURIComponent(bookingId)}`);
+        router.push(
+          `/checkout/success?ref=${buildCheckoutRef(ref.kind, ref.id)}`,
+        );
         return;
       }
       if (TERMINAL_FAILURE.includes(body.status)) {
@@ -86,12 +110,12 @@ export default function CheckoutProcessingPage() {
     } catch {
       // swallow transient errors; next tick will retry
     }
-  }, [bookingId, router]);
+  }, [ref, router]);
 
   useEffect(() => {
     mounted.current = true;
-    if (!bookingId) {
-      setState({ kind: 'failed', reason: 'Missing booking id.' });
+    if (!ref) {
+      setState({ kind: 'failed', reason: 'Missing checkout reference.' });
       return () => {
         mounted.current = false;
       };
@@ -112,7 +136,7 @@ export default function CheckoutProcessingPage() {
       mounted.current = false;
       clearInterval(iv);
     };
-  }, [bookingId, poll]);
+  }, [ref, poll]);
 
   return (
     <>

@@ -29,6 +29,28 @@ public interface IStripePaymentGateway
         CancellationToken ct);
 
     /// <summary>
+    /// Plan 04-04 / D-10 — sequential partial capture against a single combined basket
+    /// PaymentIntent. Caller supplies the <paramref name="amountToCaptureMinorUnits"/>
+    /// (Stripe.net expects minor units) and chooses whether this capture closes the PI
+    /// via <paramref name="finalCapture"/>. Deterministic idempotency keys live in the
+    /// BookingService basket orchestrator (e.g. <c>basket-{id}-capture-flight</c>,
+    /// <c>basket-{id}-capture-hotel</c>, <c>basket-{id}-finalize-partial</c>).
+    /// </summary>
+    Task<CaptureResult> CapturePartialAsync(
+        string paymentIntentId,
+        long amountToCaptureMinorUnits,
+        bool finalCapture,
+        string idempotencyKey,
+        CancellationToken ct);
+
+    /// <summary>
+    /// Plan 04-04 / D-09 hard-failure path — cancels a basket PaymentIntent BEFORE any
+    /// capture happened so the customer sees zero charges on their statement. Caller-supplied
+    /// idempotency key (e.g. <c>basket-{id}-void</c>) for MassTransit retry safety.
+    /// </summary>
+    Task VoidAsync(string paymentIntentId, string idempotencyKey, CancellationToken ct);
+
+    /// <summary>
     /// Cancels an authorization (saga compensation path).
     /// </summary>
     Task CancelAsync(Guid bookingId, string paymentIntentId, CancellationToken ct);
