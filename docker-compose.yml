@@ -4,21 +4,21 @@ services:
   # Wave 0 — Infrastructure (no dependencies)
   # ============================================================
 
-  mssql:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
-    volumes:
-      - mssql-data:/var/opt/mssql
-    ports:
-      - "1433:1433"
-    healthcheck:
-      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -C -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" -b -o /dev/null
-      interval: 10s
-      timeout: 45s
-      retries: 45
-      start_period: 10s
+  # mssql:
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   environment:
+  #     ACCEPT_EULA: "Y"
+  #     MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+  #   volumes:
+  #     - mssql-data:/var/opt/mssql
+  #   ports:
+  #     - "1433:1433"
+  #   healthcheck:
+  #     test: /opt/mssql-tools18/bin/sqlcmd -S localhost -C -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" -b -o /dev/null
+  #     interval: 10s
+  #     timeout: 45s
+  #     retries: 45
+  #     start_period: 10s
 
   rabbitmq:
     image: rabbitmq:3.13-management
@@ -43,7 +43,7 @@ services:
     volumes:
       - redis-data:/data
     ports:
-      - "6379:6379"
+      - "6378:6378"
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
@@ -59,7 +59,7 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER}"
       KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
       KC_DB: mssql
-      KC_DB_URL: "jdbc:sqlserver://mssql:1433;databaseName=KeycloakDb;encrypt=false"
+      KC_DB_URL: "jdbc:sqlserver://194.35.120.124,54321;databaseName=KeycloakDb;encrypt=false"
       KC_DB_USERNAME: "${MSSQL_SA_USER}"
       KC_DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
     volumes:
@@ -67,9 +67,9 @@ services:
     ports:
       - "8080:8080"
       - "9000:9000"
-    depends_on:
-      mssql:
-        condition: service_healthy
+    #depends_on:
+      # mssql:
+      #   condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '\"status\": \"UP\"'"]
       interval: 15s
@@ -95,9 +95,9 @@ services:
       ConnectionStrings__BackofficeDb: "${BACKOFFICE_DB_CONNECTION}"
       ConnectionStrings__FlightConnectorDb: "${FLIGHT_CONNECTOR_DB_CONNECTION}"
       ConnectionStrings__HotelConnectorDb: "${HOTEL_CONNECTOR_DB_CONNECTION}"
-    depends_on:
-      mssql:
-        condition: service_healthy
+    # depends_on:
+    #   mssql:
+    #     condition: service_healthy
     restart: "no"
 
   # ============================================================
@@ -114,7 +114,7 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
-      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
       Keycloak__BaseUrl: "http://keycloak:8080"
     depends_on:
       keycloak:
@@ -138,10 +138,10 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
-      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
     depends_on:
-      mssql:
-        condition: service_healthy
+      # mssql:
+      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
@@ -149,7 +149,7 @@ services:
       db-migrator:
         condition: service_completed_successfully
     ports:
-      - "5001:8080"
+      - "6001:8080"
 
   payment-service:
     build:
@@ -161,10 +161,10 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
-      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
     depends_on:
-      mssql:
-        condition: service_healthy
+      # mssql:
+      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
@@ -172,7 +172,7 @@ services:
       db-migrator:
         condition: service_completed_successfully
     ports:
-      - "5002:8080"
+      - "6002:8080"
 
   search-service:
     build:
@@ -184,10 +184,10 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
-      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
     depends_on:
-      mssql:
-        condition: service_healthy
+      # mssql:
+      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
@@ -195,7 +195,7 @@ services:
       db-migrator:
         condition: service_completed_successfully
     ports:
-      - "5003:8080"
+      - "6003:8080"
 
   flight-connector-service:
     build:
@@ -207,10 +207,10 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
-      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
     depends_on:
-      mssql:
-        condition: service_healthy
+      # mssql:
+      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
@@ -218,7 +218,7 @@ services:
       db-migrator:
         condition: service_completed_successfully
     ports:
-      - "5004:8080"
+      - "6004:8080"
 
   hotel-connector-service:
     build:
@@ -230,10 +230,10 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
-      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
     depends_on:
-      mssql:
-        condition: service_healthy
+      # mssql:
+      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
@@ -241,7 +241,7 @@ services:
       db-migrator:
         condition: service_completed_successfully
     ports:
-      - "5005:8080"
+      - "6005:8080"
 
   pricing-service:
     build:
@@ -253,10 +253,10 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
-      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
     depends_on:
-      mssql:
-        condition: service_healthy
+      # mssql:
+      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
@@ -264,7 +264,7 @@ services:
       db-migrator:
         condition: service_completed_successfully
     ports:
-      - "5006:8080"
+      - "6006:8080"
 
   notification-service:
     build:
@@ -276,10 +276,10 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
-      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
     depends_on:
-      mssql:
-        condition: service_healthy
+      # mssql:
+      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
@@ -287,7 +287,7 @@ services:
       db-migrator:
         condition: service_completed_successfully
     ports:
-      - "5007:8080"
+      - "6007:8080"
 
   crm-service:
     build:
@@ -299,10 +299,10 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
-      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
     depends_on:
-      mssql:
-        condition: service_healthy
+      # mssql:
+      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
@@ -310,7 +310,7 @@ services:
       db-migrator:
         condition: service_completed_successfully
     ports:
-      - "5008:8080"
+      - "6008:8080"
 
   backoffice-service:
     build:
@@ -322,10 +322,10 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
-      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
     depends_on:
-      mssql:
-        condition: service_healthy
+      # mssql:
+      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
@@ -333,13 +333,13 @@ services:
       db-migrator:
         condition: service_completed_successfully
     ports:
-      - "5009:8080"
+      - "6009:8080"
 
 # ============================================================
 # Named volumes for data persistence
 # ============================================================
 
 volumes:
-  mssql-data:
+  # mssql-data:
   rabbitmq-data:
   redis-data:

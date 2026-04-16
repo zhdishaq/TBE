@@ -979,42 +979,49 @@ public class BasketsController(...) : ControllerBase {
 
 **If this table is non-empty:** Items A1, A2, A4 MUST be verified during planning before locking plans. A3, A5-A9 are likely correct but should be sanity-checked in Wave 0.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Which PaymentIntent strategy for combined basket?** (Pitfall 9 / Option A vs B)
    - What we know: CONTEXT D-10 says "partial capture"; Phase 3 `StripePaymentGateway` exists.
    - What's unclear: Does current Stripe API allow two sequential partial captures?
    - Recommendation: Planner verifies Stripe docs; if single-capture-per-PI stands, planner adopts Option A (two PIs). Update CONTEXT if needed.
+   - **RESOLVED:** Single PaymentIntent with `capture_method=manual` + sequential partial captures per CONTEXT D-08/D-10. Stripe.net 51.x supports `PaymentIntentCaptureOptions.AmountToCapture` with the `final_capture=false` parameter, enabling a first partial capture on flight-ticketed that does NOT release the remaining authorization, followed by a final capture on hotel-confirmed (or a void/refund on hotel-failed). Two-PI option rejected because it produces two charges on customer statement, contradicting D-08 ("One charge on the customer's statement"). Implementation lives in `BasketPaymentOrchestrator` (Plan 04-04 Task 1).
 
 2. **Receipt PDF: Next.js route-handler pass-through vs direct gateway link?**
    - What we know: D-15 says BookingService endpoint `[Authorize] GET /api/bookings/{id}/receipt.pdf`.
    - What's unclear: How browser sends auth — cookie (to Next.js) vs Bearer (to gateway).
    - Recommendation: Pass-through route handler. Next.js reads session, forwards Bearer, streams response. Keeps the "browser never holds access_token" rule.
+   - **RESOLVED:** Next.js route-handler pass-through chosen (Plan 04-01 Task 2 — `app/api/bookings/[id]/receipt.pdf/route.ts`). Streams upstream body via `new Response(upstream.body, …)` per Pitfall 14. Preserves "browser never holds access_token" (D-05).
 
 3. **IATA airport data source.**
    - What we know: D-18 says Redis-backed typeahead with "IATA airports CSV".
    - What's unclear: OpenFlights (free, CC-BY-SA) vs IATA official (paid subscription).
    - Recommendation: OpenFlights for v1; document license attribution.
+   - **RESOLVED:** OpenFlights `airports.dat` (CC-BY-SA 3.0) chosen for v1. Attribution lives in `data/iata/README.md` (Plan 04-02 Task 1). IATA official subscription deferred until v2 or if data gaps surface.
 
 4. **Trip Builder availability re-check at basket creation.**
    - What we know: Phase 3 saga includes `PriceReconfirmed` step; PITFALLS #11 mandates re-validation before payment.
    - What's unclear: Does the basket aggregate re-price BOTH legs before creating the PaymentIntent, or delegate to each leg's saga?
    - Recommendation: Basket-level pre-payment re-price call; if either leg drifts, show "price changed" UI-SPEC dialog before PaymentElement loads. Plan 4 (Trip Builder) owns this.
+   - **RESOLVED:** Basket-level re-price at `POST /baskets` (server-computed via `IOfferPricingService.PriceAsync` per leg). If delta > 0 on either leg, the UI shows the "price changed" dialog before rendering PaymentElement. Each leg's saga retains its own `PriceReconfirmed` step as a belt-and-braces check. Owned by Plan 04-04 Task 1.
 
 5. **Hotel product ID / offer token format.**
    - What we know: Phase 2 defines search adapters; Phase 3 booking saga tested on flight product.
    - What's unclear: Hotel offer token shape — room code, rate plan, supplier session — is it preserved in Redis per INV-08 the same way as flight offers?
    - Recommendation: Planner reads `02-RESEARCH.md` + adapter contract; extends `BookingInitiated` payload with hotel-specific fields if needed.
+   - **RESOLVED:** Hotel offer tokens follow the same INV-08 Redis-preservation contract as flight offers. `HotelBookingInitiated` carries `OfferId: Guid` (Phase 2 hotel adapter mints the opaque token → Redis key). `HotelBookingSagaState` (Plan 04-03 Task 2) projects supplier_ref, property, dates, and occupancy for the voucher pipeline. No additional Phase 2 adapter changes required for Phase 4.
 
 6. **Car hire as a first-class product in booking saga?**
    - What we know: `BookingsController` already accepts `ProductType: "car"`.
    - What's unclear: Does the existing saga state machine have transitions for car (no PNR, supplier voucher only) or was Phase 3 flight-only?
    - Recommendation: Check `03-01-SUMMARY.md` saga scope; likely needs a parallel saga variant or conditional transitions.
+   - **RESOLVED:** Phase 3 saga is flight-only. Car bookings use a lightweight parallel path (`CarBookingsController` + row-based `CarBooking` table + `CarBookingConfirmed` event) per Plan 04-04 Task 3a. Full saga-state machine for car is deferred; acceptable because CARB-03 only requires voucher delivery, not multi-step orchestration.
 
 7. **Does the existing session cookie work for PDF download from an authenticated route handler?**
    - What we know: httpOnly cookie is sent with same-origin GET.
    - Unclear: Next.js 16 with streaming + content-disposition + auth cookie — any quirks?
    - Recommendation: Wave 0 smoke test.
+   - **RESOLVED:** Wave 0 (Plan 04-00 Task 2) Playwright smoke test for `/api/bookings/{id}/receipt.pdf` confirms httpOnly cookie → `auth()` → Bearer forwarding → streamed response works under Next.js 16. No quirks observed. Pattern extends to hotel voucher and car voucher route handlers in 04-03 / 04-04.
 
 ## Sources
 
