@@ -14,8 +14,18 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+    <PackageReference Include="FluentAssertions" Version="8.2.0" />
+    <PackageReference Include="MassTransit.TestFramework" Version="9.1.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TBE.Tests.Shared\TBE.Tests.Shared.csproj" />
+    <ProjectReference Include="..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\services\NotificationService\NotificationService.Application\NotificationService.Application.csproj" />
+    <ProjectReference Include="..\..\src\services\NotificationService\NotificationService.Infrastructure\NotificationService.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

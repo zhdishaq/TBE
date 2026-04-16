@@ -1,0 +1,53 @@
+@model TBE.NotificationService.API.Templates.Models.HotelVoucherModel
+<!--SUBJECT:Hotel Voucher — @Model.SupplierRef-->
+<!DOCTYPE html>
+<html>
+<body style="font-family:Arial,sans-serif;color:#111827;max-width:640px;margin:0 auto;">
+  @{ await IncludeAsync("_Header", Model); }
+  <div style="padding:24px;">
+    <h1 style="color:#0a3d62;">Hello @Model.GuestFullName,</h1>
+    <p>Your hotel stay is confirmed. Here is a summary of your reservation:</p>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px;">
+      <tr>
+        <td style="padding:8px 0;"><strong>Property:</strong></td>
+        <td style="padding:8px 0;">@Model.PropertyName</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Address:</strong></td>
+        <td style="padding:8px 0;">@Model.AddressLine</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Check-in:</strong></td>
+        <td style="padding:8px 0;">@Model.CheckInDate.ToString("yyyy-MM-dd")</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Check-out:</strong></td>
+        <td style="padding:8px 0;">@Model.CheckOutDate.ToString("yyyy-MM-dd")</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Rooms:</strong></td>
+        <td style="padding:8px 0;">@Model.Rooms</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Guests:</strong></td>
+        <td style="padding:8px 0;">@Model.Adults adult(s), @Model.Children child(ren)</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Supplier reference:</strong></td>
+        <td style="padding:8px 0;"><code>@Model.SupplierRef</code></td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Booking reference:</strong></td>
+        <td style="padding:8px 0;">@Model.BookingReference</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Total:</strong></td>
+        <td style="padding:8px 0;">@Model.TotalAmount.ToString("0.00") @Model.Currency</td>
+      </tr>
+    </table>
+    <p>Your PDF voucher is attached. Please present it at check-in.</p>
+    <p>If you need assistance, our support team is available on @Model.SupportPhone.</p>
+  </div>
+  @{ await IncludeAsync("_Footer", Model); }
+</body>
+</html>
