@@ -65,6 +65,11 @@ services:
       KC_DB_URL: "jdbc:sqlserver://mssql;databaseName=KeycloakDb;encrypt=false"
       KC_DB_USERNAME: "${MSSQL_SA_USER}"
       KC_DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
+      KC_PROXY: "edge"
+      KC_HOSTNAME: "openid.3ha.one"
+      KC_HOSTNAME_STRICT: "true"
+      KC_HOSTNAME_STRICT_HTTPS: "true"
+      KC_HTTP_ENABLED: "true"
     volumes:
       - ./infra/keycloak/realms:/opt/keycloak/data/import
     ports:
