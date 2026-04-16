@@ -17,10 +17,10 @@ import userEvent from '@testing-library/user-event';
 // payment-element-wrapper pulls them in.
 const confirmPayment = vi.fn(async () => ({ paymentIntent: { status: 'succeeded' } }));
 const stripeInstance = { confirmPayment };
-const loadStripe = vi.fn(async () => stripeInstance);
+const loadStripe = vi.fn(async (_pk?: string) => stripeInstance);
 
 vi.mock('@stripe/stripe-js', () => ({
-  loadStripe: (...args: unknown[]) => loadStripe(...args),
+  loadStripe: (pk: string) => loadStripe(pk),
 }));
 
 vi.mock('@stripe/react-stripe-js', () => {
@@ -97,9 +97,10 @@ describe('<PaymentElementWrapper>', () => {
     );
     await user.click(screen.getByRole('button', { name: /Pay/i }));
     expect(confirmPayment).toHaveBeenCalledTimes(1);
-    const call = confirmPayment.mock.calls[0][0] as {
-      confirmParams: { return_url: string };
-    };
+    const calls = confirmPayment.mock.calls as unknown as Array<
+      [{ confirmParams: { return_url: string } }]
+    >;
+    const call = calls[0][0];
     expect(call.confirmParams.return_url).toMatch(/\/checkout\/processing/);
     expect(call.confirmParams.return_url).toMatch(/book-xyz/);
   });

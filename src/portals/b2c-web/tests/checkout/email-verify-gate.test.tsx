@@ -45,8 +45,9 @@ describe('<EmailVerifyGate>', () => {
     await user.click(screen.getByRole('button', { name: /resend email/i }));
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchSpy.mock.calls[0];
+    const args = fetchSpy.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit | undefined];
+    const [url, init] = args;
     expect(String(url)).toBe('/api/auth/resend-verification');
-    expect((init as RequestInit).method).toBe('POST');
+    expect(init?.method).toBe('POST');
   });
 });
