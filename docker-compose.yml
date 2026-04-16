@@ -36,6 +36,8 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s
+    networks:
+      - shared-network
 
   redis:
     image: redis:7.2-alpine
@@ -50,7 +52,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
-
+    networks:
+      - shared-network
   keycloak:
     image: quay.io/keycloak/keycloak:26.6.0
     command: start-dev --import-realm
@@ -59,7 +62,7 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER}"
       KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
       KC_DB: mssql
-      KC_DB_URL: "jdbc:sqlserver://194.35.120.124;portNumber=54321;databaseName=KeycloakDb;encrypt=false"
+      KC_DB_URL: "jdbc:sqlserver://mssql;databaseName=KeycloakDb;encrypt=false"
       KC_DB_USERNAME: "${MSSQL_SA_USER}"
       KC_DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
     volumes:
@@ -67,6 +70,9 @@ services:
     ports:
       - "8080:8080"
       - "9000:9000"
+    networks:
+      - shared-network
+    
     #depends_on:
       # mssql:
       #   condition: service_healthy
@@ -85,6 +91,8 @@ services:
     build:
       context: .
       dockerfile: src/tools/TBE.DbMigrator/Dockerfile
+    networks:
+      - shared-network
     environment:
       ConnectionStrings__BookingDb: "${BOOKING_DB_CONNECTION}"
       ConnectionStrings__PaymentDb: "${PAYMENT_DB_CONNECTION}"
@@ -127,6 +135,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "5000:8080"
+    networks:
+      - shared-network
 
   booking-service:
     build:
@@ -150,6 +160,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "6001:8080"
+    networks:
+      - shared-network
 
   payment-service:
     build:
@@ -173,6 +185,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "6002:8080"
+    networks:
+      - shared-network
 
   search-service:
     build:
@@ -196,6 +210,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "6003:8080"
+    networks:
+      - shared-network
 
   flight-connector-service:
     build:
@@ -219,6 +235,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "6004:8080"
+    networks:
+      - shared-network
 
   hotel-connector-service:
     build:
@@ -242,6 +260,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "6005:8080"
+    networks:
+      - shared-network
 
   pricing-service:
     build:
@@ -265,6 +285,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "6006:8080"
+    networks:
+      - shared-network
 
   notification-service:
     build:
@@ -288,6 +310,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "6007:8080"
+    networks:
+      - shared-network
 
   crm-service:
     build:
@@ -311,6 +335,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "6008:8080"
+    networks:
+      - shared-network
 
   backoffice-service:
     build:
@@ -334,6 +360,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "6009:8080"
+    networks:
+      - shared-network
 
 # ============================================================
 # Named volumes for data persistence
@@ -343,3 +371,7 @@ volumes:
   # mssql-data:
   rabbitmq-data:
   redis-data:
+networks:
+  shared-network:
+    name: shared-network
+    external: true
