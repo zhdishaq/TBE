@@ -1,15 +1,21 @@
-// Stripe PaymentElement wrapper (B2C-06, D-08, Pitfall 5/6).
-//
-// Wraps @stripe/react-stripe-js <Elements> around <PaymentElement>, then
-// calls `stripe.confirmPayment({ confirmParams: { return_url } })` when
-// the Pay button is clicked. The return_url lands on /checkout/processing
-// with the bookingId — but success is ALWAYS driven by the saga-poll
-// path, not by Stripe's redirect landing (Pitfall 6 / FLTB-D-12).
-//
-// COMP-01 / T-04-02-01: card data goes directly to the Stripe-hosted
-// IFRAME; the portal code never touches PAN/CVC.
-
 'use client';
+
+// Combined Stripe PaymentElement for Trip Builder baskets (Plan 04-04 /
+// PKG-02 / D-08 / D-10).
+//
+// D-08 single-PaymentIntent invariant: ONE `<Elements>` tree wrapping
+// ONE `<PaymentElement>` driven by ONE `clientSecret`. This component
+// MUST NOT accept, render, or reference a second client secret — a
+// `flightClientSecret`/`hotelClientSecret` shape is the forbidden two-PI
+// strategy.
+//
+// `confirmPayment` fires EXACTLY ONCE on click with `return_url =
+// /checkout/processing?ref=basket-{id}`. That single call triggers the
+// authorize; the sequential partial captures (flight final_capture=false
+// → hotel final_capture=true) run server-side inside
+// BasketPaymentOrchestrator. The copy explicitly tells the customer
+// they'll see ONE charge on their statement (D-08 single-statement
+// disclosure) — any split-statement language is forbidden.
 
 import {
   Elements,
@@ -22,37 +28,28 @@ import { useCallback, useState } from 'react';
 
 import { getStripe } from '@/lib/stripe';
 import { formatMoney } from '@/lib/formatters';
-import { buildCheckoutRef, type CheckoutRefKind } from '@/lib/checkout-ref';
 
-interface PaymentElementWrapperProps {
+export interface CombinedPaymentFormProps {
+  basketId: string;
+  clientSecret: string;
   amount: number;
   currency: string;
-  bookingId: string;
-  clientSecret: string;
-  /**
-   * Unified B5 ref kind used to build the return_url. Defaults to "flight"
-   * for back-compat with the 04-02 flight-only callers. 04-04 hotel/car
-   * flows pass "hotel" / "car" so the processing page polls the correct
-   * status endpoint.
-   */
-  refKind?: CheckoutRefKind;
 }
 
-function buildReturnUrl(bookingId: string, kind: CheckoutRefKind): string {
+function buildBasketReturnUrl(basketId: string): string {
   const origin =
     typeof window !== 'undefined' && window.location?.origin
       ? window.location.origin
       : '';
-  const ref = encodeURIComponent(buildCheckoutRef(kind, bookingId));
-  return `${origin}/checkout/processing?ref=${ref}`;
+  const safeId = encodeURIComponent(basketId);
+  return `${origin}/checkout/processing?ref=basket-${safeId}`;
 }
 
 function PayForm({
+  basketId,
   amount,
   currency,
-  bookingId,
-  refKind = 'flight',
-}: Omit<PaymentElementWrapperProps, 'clientSecret'>) {
+}: Omit<CombinedPaymentFormProps, 'clientSecret'>) {
   const stripe = useStripe() as Stripe | null;
   const elements = useElements() as StripeElements | null;
   const [submitting, setSubmitting] = useState(false);
@@ -63,7 +60,7 @@ function PayForm({
     setSubmitting(true);
     setError(null);
     try {
-      // Validate fields first (Stripe docs recommend this before confirm).
+      // Validate fields before confirm (Stripe docs recommend this order).
       if (typeof elements.submit === 'function') {
         const submitRes = await elements.submit();
         const maybeError = (submitRes as { error?: { message?: string } } | undefined)?.error;
@@ -74,16 +71,16 @@ function PayForm({
         }
       }
 
+      // Exactly ONE confirmPayment — D-08. A second call for a hotel PI
+      // would split the customer's statement into two charges, which the
+      // product spec explicitly forbids.
       const result = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: buildReturnUrl(bookingId, refKind),
+          return_url: buildBasketReturnUrl(basketId),
         },
       });
 
-      // On 3DS, confirmPayment redirects the browser away — any code
-      // reaching this point means either immediate success OR a
-      // non-redirect error (e.g. card declined).
       const resultError = (result as { error?: { message?: string } } | undefined)?.error;
       if (resultError?.message) {
         setError(resultError.message);
@@ -93,13 +90,16 @@ function PayForm({
     } finally {
       setSubmitting(false);
     }
-  }, [stripe, elements, bookingId, refKind]);
+  }, [stripe, elements, basketId]);
 
   const label = `Pay ${formatMoney(amount, currency)}`;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" data-testid="combined-payment-form">
       <PaymentElement />
+      <p className="text-xs text-muted-foreground">
+        You&apos;ll see ONE charge on your statement for the total trip amount.
+      </p>
       <button
         type="button"
         onClick={onPay}
@@ -117,19 +117,14 @@ function PayForm({
   );
 }
 
-export function PaymentElementWrapper(props: PaymentElementWrapperProps) {
+export function CombinedPaymentForm(props: CombinedPaymentFormProps) {
   const { clientSecret } = props;
   // getStripe() is memoised (Pitfall 5) — safe to call on every render.
   const stripePromise = getStripe();
 
   return (
     <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <PayForm
-        amount={props.amount}
-        currency={props.currency}
-        bookingId={props.bookingId}
-        refKind={props.refKind}
-      />
+      <PayForm basketId={props.basketId} amount={props.amount} currency={props.currency} />
     </Elements>
   );
 }

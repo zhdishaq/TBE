@@ -7,15 +7,17 @@
 // returns `{ bookingId }`; we then router.push to the shared checkout
 // pipeline that 04-02 already built.
 //
-// The checkout/details page from 04-02 keys off `offerId` for flights.
-// For hotels we pass `hotelBookingId` so the details page can branch
-// (04-04 will unify both under a single `basketId` for Trip Builder).
+// B5 unification (04-04): the checkout/details page keys off the shared
+// `?ref={kind}-{id}` contract. For hotels we push `ref=hotel-{id}` via
+// buildCheckoutRef; flights/baskets/cars use their own kind prefixes.
 //
 // IMPORTANT: "Book room" is the exact button label asserted by the E2E
 // spec. Do not reword.
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+
+import { buildCheckoutRef } from '@/lib/checkout-ref';
 
 export interface BookRoomButtonProps {
   offerId: string;
@@ -72,7 +74,9 @@ export function BookRoomButton({
       }
       const body = (await resp.json()) as { bookingId?: string };
       if (!body.bookingId) throw new Error('Booking response missing bookingId');
-      router.push(`/checkout/details?hotelBookingId=${encodeURIComponent(body.bookingId)}`);
+      router.push(
+        `/checkout/details?ref=${encodeURIComponent(buildCheckoutRef('hotel', body.bookingId))}`,
+      );
     } catch (err) {
       setError((err as Error).message);
       setPending(false);

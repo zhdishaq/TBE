@@ -3,7 +3,8 @@
 // One sub-form per passenger (adults + children + infants from the URL
 // state). RHF + zod validation. On submit POSTs /api/bookings with the
 // offerId + passenger array; the API route forwards to BookingService
-// and returns { bookingId } → navigate to /checkout/payment?booking={id}.
+// and returns { bookingId } → navigate to
+// /checkout/payment?ref=flight-{id} via the unified B5 contract.
 
 'use client';
 
@@ -12,6 +13,8 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+
+import { buildCheckoutRef } from '@/lib/checkout-ref';
 
 const TITLES = ['Mr', 'Ms', 'Mrs', 'Miss', 'Mx'] as const;
 type Title = (typeof TITLES)[number];
@@ -108,7 +111,9 @@ export function PassengerDetailsForm({ offerId, adt, chd, infl, infs }: Passenge
         setSubmitError('Booking service returned no bookingId.');
         return;
       }
-      router.push(`/checkout/payment?booking=${encodeURIComponent(body.bookingId)}`);
+      router.push(
+        `/checkout/payment?ref=${encodeURIComponent(buildCheckoutRef('flight', body.bookingId))}`,
+      );
     } catch {
       setSubmitError('Network error. Please try again.');
     }
