@@ -75,6 +75,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.email_verified =
           ((profile as { email_verified?: boolean } | null | undefined)
             ?.email_verified) ?? false;
+        // Preserve `sub` explicitly — resend-verification (Pitfall 8)
+        // calls the Keycloak Admin API with the user's sub as the path
+        // segment, so we must not let Auth.js strip it from the JWT.
+        const profileSub = (profile as { sub?: string } | null | undefined)?.sub;
+        if (profileSub) token.sub = profileSub;
         return token;
       }
       // Refresh-token rotation (Pitfall 2): if access token is within
@@ -89,6 +94,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.access_token = token.access_token as string | undefined;
       session.email_verified = Boolean(token.email_verified);
       session.expires_at = token.expires_at as number | undefined;
+      // Expose the Keycloak sub via session.user.id so the
+      // resend-verification route handler can address the right user.
+      const sub = token.sub as string | undefined;
+      if (sub) {
+        session.user = { ...(session.user ?? {}), id: sub };
+      }
       return session;
     },
   },

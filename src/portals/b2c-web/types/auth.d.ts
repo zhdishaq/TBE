@@ -15,6 +15,16 @@ declare module 'next-auth' {
     email_verified: boolean;
     expires_at?: number;
     error?: 'RefreshAccessTokenError';
+    user?: {
+      /**
+       * Keycloak `sub` claim. Required by resend-verification
+       * (Pitfall 8) — the Keycloak Admin API addresses users by sub.
+       */
+      id?: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
   }
 }
 
@@ -24,6 +34,8 @@ declare module 'next-auth/jwt' {
     refresh_token?: string;
     expires_at?: number;
     email_verified?: boolean;
+    /** Keycloak `sub` claim, copied on initial sign-in. */
+    sub?: string;
     error?: 'RefreshAccessTokenError';
   }
 }
