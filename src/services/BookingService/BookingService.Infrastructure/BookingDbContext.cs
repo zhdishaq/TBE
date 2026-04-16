@@ -13,6 +13,7 @@ public class BookingDbContext : DbContext
 
     public DbSet<BookingSagaState> BookingSagaStates => Set<BookingSagaState>();
     public DbSet<SagaDeadLetter> SagaDeadLetters => Set<SagaDeadLetter>();
+    public DbSet<HotelBookingSagaState> HotelBookingSagaStates => Set<HotelBookingSagaState>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,5 +27,8 @@ public class BookingDbContext : DbContext
         // Saga state + dead-letter ledger (D-01 dedicated schema)
         modelBuilder.ApplyConfiguration(new BookingSagaStateMap());
         modelBuilder.ApplyConfiguration(new SagaDeadLetterMap());
+
+        // Plan 04-03 — hotel-booking aggregate (HOTB-01..05, D-16)
+        modelBuilder.ApplyConfiguration(new HotelBookingSagaStateMap());
     }
 }

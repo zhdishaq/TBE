@@ -76,6 +76,11 @@ try
         c.BaseAddress = new Uri(
             builder.Configuration["Services:FlightConnector:BaseUrl"] ?? "http://flight-connector:8080"));
 
+    // Plan 04-03 / D-16 — HotelBookingsController streams voucher.pdf from NotificationService.
+    builder.Services.AddHttpClient(TBE.BookingService.API.Controllers.HotelBookingsController.NotificationClientName, c =>
+        c.BaseAddress = new Uri(
+            builder.Configuration["Services:NotificationService:BaseUrl"] ?? "http://notification-service:8080"));
+
     // B2C receipt PDF generator (Plan 04-01 / D-15). Scoped lifetime mirrors the
     // DbContext that the controller injects alongside it.
     builder.Services.AddScoped<IBookingReceiptPdfGenerator, QuestPdfBookingReceiptGenerator>();
