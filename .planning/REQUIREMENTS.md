@@ -65,10 +65,10 @@
 
 - [x] **B2C-01**: Customer can register with email/password; email verification required before booking
 - [x] **B2C-02**: Customer can log in, reset password, and maintain a persistent session
-- [ ] **B2C-03**: Flight/hotel/car search forms with date pickers, passenger selectors, and destination autocomplete
-- [ ] **B2C-04**: Search results display sorted by price with filters (stops, airline, departure time, price range)
-- [ ] **B2C-05**: Booking flow is mobile-responsive and completable in under 5 steps
-- [ ] **B2C-06**: Credit card payment via Stripe Elements (SAQ-A compliant — card data never touches the server)
+- [x] **B2C-03**: Flight/hotel/car search forms with date pickers, passenger selectors, and destination autocomplete
+- [x] **B2C-04**: Search results display sorted by price with filters (stops, airline, departure time, price range)
+- [x] **B2C-05**: Booking flow is mobile-responsive and completable in under 5 steps
+- [x] **B2C-06**: Credit card payment via Stripe Elements (SAQ-A compliant — card data never touches the server)
 - [x] **B2C-07**: Customer dashboard: upcoming trips, past bookings, profile management
 - [x] **B2C-08**: Booking receipt downloadable as PDF
 
