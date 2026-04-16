@@ -88,6 +88,24 @@ public class BookingsController(
             dto.TicketNumber, dto.TotalAmount, dto.Currency, dto.CreatedAt));
     }
 
+    /// <summary>
+    /// Plan 04-01 / CONTEXT D-17 — convenience route for the B2C dashboard.
+    /// Resolves <c>customerId</c> from the JWT so the portal can call
+    /// <c>GET /customers/me/bookings</c> without having to construct the sub
+    /// claim on the client. Delegates to <see cref="ListForCustomerAsync"/>.
+    /// </summary>
+    [HttpGet("/customers/me/bookings")]
+    public Task<IActionResult> ListForMeAsync(int page = 1, int size = 20, CancellationToken ct = default)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub")
+            ?? string.Empty;
+        if (string.IsNullOrEmpty(userId))
+            return Task.FromResult<IActionResult>(Unauthorized());
+
+        return ListForCustomerAsync(userId, page, size, ct);
+    }
+
     [HttpGet("/customers/{customerId}/bookings")]
     public async Task<IActionResult> ListForCustomerAsync(
         string customerId, int page = 1, int size = 20, CancellationToken ct = default)

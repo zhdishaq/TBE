@@ -6,10 +6,12 @@ using Serilog;
 using Serilog.Formatting.Compact;
 using TBE.BookingService.Application.Consumers;
 using TBE.BookingService.Application.Consumers.CompensationConsumers;
+using TBE.BookingService.Application.Pdf;
 using TBE.BookingService.Application.Saga;
 using TBE.BookingService.Application.Ttl;
 using TBE.BookingService.Application.Ttl.Adapters;
 using TBE.BookingService.Infrastructure;
+using TBE.BookingService.Infrastructure.Pdf;
 using TBE.BookingService.Infrastructure.Ttl;
 using TBE.Common.Messaging;
 using TBE.Common.Security;
@@ -73,6 +75,10 @@ try
     builder.Services.AddHttpClient("flight-connector", c =>
         c.BaseAddress = new Uri(
             builder.Configuration["Services:FlightConnector:BaseUrl"] ?? "http://flight-connector:8080"));
+
+    // B2C receipt PDF generator (Plan 04-01 / D-15). Scoped lifetime mirrors the
+    // DbContext that the controller injects alongside it.
+    builder.Services.AddScoped<IBookingReceiptPdfGenerator, QuestPdfBookingReceiptGenerator>();
 
     builder.Services.AddControllers();
 

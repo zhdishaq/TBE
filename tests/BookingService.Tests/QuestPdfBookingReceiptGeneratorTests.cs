@@ -1,7 +1,7 @@
-using System.Text;
 using FluentAssertions;
 using TBE.BookingService.Application.Saga;
 using TBE.BookingService.Infrastructure.Pdf;
+using UglyToad.PdfPig;
 using Xunit;
 
 namespace TBE.BookingService.Tests;
@@ -9,9 +9,8 @@ namespace TBE.BookingService.Tests;
 /// <summary>
 /// Plan 04-01 Task 1 — QuestPdfBookingReceiptGenerator produces a non-empty
 /// PDF with fare / YQ-YR / tax separation per FLTB-03 (D-15 / CONTEXT).
-/// Uses lightweight byte-search assertions against the rendered PDF stream
-/// — QuestPDF emits text as Win1252/ASCII by default so the reference
-/// strings ("Base fare", "PNR", etc.) appear verbatim in the byte array.
+/// Uses PdfPig to extract the rendered text so assertions survive QuestPDF's
+/// FlateDecode compression of the content streams.
 /// </summary>
 public class QuestPdfBookingReceiptGeneratorTests
 {
@@ -40,14 +39,15 @@ public class QuestPdfBookingReceiptGeneratorTests
         var gen = new QuestPdfBookingReceiptGenerator();
 
         var bytes = await gen.GenerateAsync(SampleState(), CancellationToken.None);
+        var text = ExtractText(bytes);
 
         // FLTB-03: base fare, YQ/YR surcharges and taxes are rendered as
         // separate lines (not merged into a single "total taxes" figure).
-        Contains(bytes, "Base fare").Should().BeTrue("receipt must show base fare line");
-        Contains(bytes, "YQ").Should().BeTrue("receipt must show YQ/YR surcharges line");
-        Contains(bytes, "Taxes").Should().BeTrue("receipt must show taxes line");
-        Contains(bytes, "Total").Should().BeTrue("receipt must show total line");
-        Contains(bytes, "GBP").Should().BeTrue("receipt must render the currency code from saga state");
+        text.Should().Contain("Base fare", "receipt must show base fare line");
+        text.Should().Contain("YQ", "receipt must show YQ/YR surcharges line");
+        text.Should().Contain("Taxes", "receipt must show taxes line");
+        text.Should().Contain("Total", "receipt must show total line");
+        text.Should().Contain("GBP", "receipt must render the currency code from saga state");
     }
 
     [Fact]
@@ -56,10 +56,11 @@ public class QuestPdfBookingReceiptGeneratorTests
         var gen = new QuestPdfBookingReceiptGenerator();
 
         var bytes = await gen.GenerateAsync(SampleState(), CancellationToken.None);
+        var text = ExtractText(bytes);
 
-        Contains(bytes, "PNR123").Should().BeTrue("receipt must include the GDS PNR");
-        Contains(bytes, "125-1234567890").Should().BeTrue("receipt must include the airline ticket number");
-        Contains(bytes, "TBE-260416-ABCDEF01").Should().BeTrue(
+        text.Should().Contain("PNR123", "receipt must include the GDS PNR");
+        text.Should().Contain("125-1234567890", "receipt must include the airline ticket number");
+        text.Should().Contain("TBE-260416-ABCDEF01",
             "receipt header must include the booking reference");
     }
 
@@ -84,19 +85,14 @@ public class QuestPdfBookingReceiptGeneratorTests
         TicketingDeadlineUtc = DateTime.UtcNow.AddHours(24),
     };
 
-    /// <summary>Naive substring search over ASCII-text segments of a PDF byte array.</summary>
-    private static bool Contains(byte[] haystack, string needle)
+    private static string ExtractText(byte[] bytes)
     {
-        var needleBytes = Encoding.ASCII.GetBytes(needle);
-        for (var i = 0; i <= haystack.Length - needleBytes.Length; i++)
+        using var doc = PdfDocument.Open(bytes);
+        var sb = new System.Text.StringBuilder();
+        foreach (var page in doc.GetPages())
         {
-            var match = true;
-            for (var j = 0; j < needleBytes.Length; j++)
-            {
-                if (haystack[i + j] != needleBytes[j]) { match = false; break; }
-            }
-            if (match) return true;
+            sb.AppendLine(page.Text);
         }
-        return false;
+        return sb.ToString();
     }
 }

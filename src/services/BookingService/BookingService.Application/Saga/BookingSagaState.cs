@@ -29,6 +29,21 @@ public class BookingSagaState : SagaStateMachineInstance, ISagaVersion
     public string? GdsPnr { get; set; }
     public string? StripePaymentIntentId { get; set; }
     public string? TicketNumber { get; set; }
+
+    /// <summary>
+    /// Fare breakdown persisted for receipt regeneration (04-01 / FLTB-03 / D-15).
+    /// Sourced from the GDS offer at PNR time and frozen onto the saga so the
+    /// PDF receipt remains auditable after ticketing. All three are in the
+    /// booking's <see cref="Currency"/>; their sum should equal <see cref="TotalAmount"/>.
+    /// </summary>
+    public decimal BaseFareAmount { get; set; }
+
+    /// <summary>YQ/YR carrier-imposed surcharges (kept separate from taxes per FLTB-03 / EU-UK regs).</summary>
+    public decimal SurchargeAmount { get; set; }
+
+    /// <summary>Government taxes and airport fees.</summary>
+    public decimal TaxAmount { get; set; }
+
     public DateTime TicketingDeadlineUtc { get; set; }
     public Guid? TimeoutTokenId { get; set; }
     public DateTime InitiatedAtUtc { get; set; }

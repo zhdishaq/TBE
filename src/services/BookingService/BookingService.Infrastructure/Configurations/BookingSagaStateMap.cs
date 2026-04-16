@@ -22,6 +22,9 @@ public class BookingSagaStateMap : IEntityTypeConfiguration<BookingSagaState>
         b.Property(x => x.Channel).HasMaxLength(5).IsRequired();
         b.Property(x => x.UserId).HasMaxLength(64).IsRequired();
         b.Property(x => x.TotalAmount).HasColumnType("decimal(18,4)");
+        b.Property(x => x.BaseFareAmount).HasColumnType("decimal(18,4)");
+        b.Property(x => x.SurchargeAmount).HasColumnType("decimal(18,4)");
+        b.Property(x => x.TaxAmount).HasColumnType("decimal(18,4)");
         b.Property(x => x.Currency).HasMaxLength(3).IsRequired();
         b.Property(x => x.PaymentMethod).HasMaxLength(10).IsRequired();
         b.Property(x => x.OfferToken).HasMaxLength(200);
