@@ -8,6 +8,7 @@ using TBE.PricingService.Infrastructure;
 using TBE.NotificationService.Infrastructure;
 using TBE.CrmService.Infrastructure;
 using TBE.BackofficeService.Infrastructure;
+using TBE.NotificationService.Application.Persistence;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(new CompactJsonFormatter())
