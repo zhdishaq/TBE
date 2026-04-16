@@ -59,7 +59,7 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER}"
       KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
       KC_DB: mssql
-      KC_DB_URL: "jdbc:sqlserver://194.35.120.124,54321;databaseName=KeycloakDb;encrypt=false"
+      KC_DB_URL: "jdbc:sqlserver://194.35.120.124;portNumber=54321;databaseName=KeycloakDb;encrypt=false"
       KC_DB_USERNAME: "${MSSQL_SA_USER}"
       KC_DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
     volumes:
