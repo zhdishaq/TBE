@@ -103,7 +103,7 @@
 - [x] 04-00-PLAN.md — Wave 0 scaffold: fork `ui/starterKit` → `src/portals/b2c-web/`, wire Auth.js v5 edge-split + CSP, configure Vitest + Playwright + live Keycloak auth smoke, red-placeholder .NET test scaffolds, Keycloak `tbe-b2c` audience mapper + `tbe-b2c-admin` service client (Pitfalls 1/3/4/8/16/17)
 - [x] 04-01-PLAN.md — Auth + account portal: Keycloak-backed login/register/verify, resend-verification via admin client, RSC dashboard from `GET /customers/me/bookings`, receipt PDF via QuestPdfBookingReceiptGenerator (B2C-01, B2C-02, B2C-07, B2C-08, NOTF-02)
 - [x] 04-02-PLAN.md — Flight search + booking UI: IATA typeahead (OpenFlights + Redis), search form/results/detail with nuqs URL state + TanStack Query (D-11/12), checkout details → Stripe PaymentElement → /checkout/processing polling → success, email-verify gate (B2C-03, B2C-04, B2C-05, B2C-06, NOTF-02)
-- [ ] 04-03-PLAN.md — Hotel search + booking UI: hotel search/results/detail, HotelBookingsController + HotelBookingSagaState, HotelBookingConfirmed event + NotificationService consumer + HotelVoucher.cshtml + QuestPDF HotelVoucherDocument (HOTB-01..05, NOTF-02 primary)
+- [x] 04-03-PLAN.md — Hotel search + booking UI: hotel search/results/detail, HotelBookingsController + HotelBookingSagaState, HotelBookingConfirmed event + NotificationService consumer + HotelVoucher.cshtml + QuestPDF HotelVoucherDocument (HOTB-01..05, NOTF-02 primary)
 - [ ] 04-04-PLAN.md — Car hire + Trip Builder: car + transfer search + car voucher, Baskets table + BasketsController + BasketPaymentOrchestrator using Option A two-PaymentIntents with deterministic idempotency keys, combined email (full & partial-failure per D-09) via BasketConfirmedConsumer (CARB-01..03, PKG-01..04)
 
 ### UAT Criteria
