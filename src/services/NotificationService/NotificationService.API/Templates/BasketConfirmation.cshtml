@@ -1,0 +1,117 @@
+@model TBE.NotificationService.API.Templates.Models.BasketConfirmationModel
+<!--SUBJECT:@(Model.IsPartial ? "Partial booking confirmation" : "Your trip is confirmed")-->
+<!DOCTYPE html>
+<html>
+<body style="font-family:Arial,sans-serif;color:#111827;max-width:640px;margin:0 auto;">
+  @{ await IncludeAsync("_Header", Model); }
+  <div style="padding:24px;">
+    <h1 style="color:#0a3d62;">Hello @Model.GuestFullName,</h1>
+
+    @if (Model.IsPartial)
+    {
+      <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:8px;padding:16px;margin-bottom:16px;">
+        <p style="margin:0 0 8px 0;"><strong>We could not confirm your full trip.</strong></p>
+        <p style="margin:0 0 8px 0;">@Model.PartialFailureCause</p>
+        <p style="margin:0;">You'll see ONE charge on your statement of @Model.ChargedAmount.ToString("0.00") @Model.Currency for the flight portion only. The hotel authorization was released and will not appear as a charge.</p>
+      </div>
+    }
+    else
+    {
+      <p>Your combined trip is confirmed. Here's a summary:</p>
+    }
+
+    @if (Model.FlightSection != null)
+    {
+      <h2 style="color:#0a3d62;font-size:18px;margin-top:24px;">Flight</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:8px 0;"><strong>Booking reference:</strong></td>
+          <td style="padding:8px 0;">@Model.FlightSection.BookingReference</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;"><strong>PNR:</strong></td>
+          <td style="padding:8px 0;">@Model.FlightSection.Pnr</td>
+        </tr>
+        @if (!string.IsNullOrEmpty(Model.FlightSection.ETicketNumber))
+        {
+          <tr>
+            <td style="padding:8px 0;"><strong>E-ticket:</strong></td>
+            <td style="padding:8px 0;">@Model.FlightSection.ETicketNumber</td>
+          </tr>
+        }
+      </table>
+      <p style="color:#6b7280;font-size:13px;">Flight cancellation policy is per your fare rules. See the attached e-ticket for carrier terms.</p>
+    }
+
+    @if (Model.HotelSection != null)
+    {
+      <h2 style="color:#0a3d62;font-size:18px;margin-top:24px;">Hotel</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:8px 0;"><strong>Property:</strong></td>
+          <td style="padding:8px 0;">@Model.HotelSection.PropertyName</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;"><strong>Check-in:</strong></td>
+          <td style="padding:8px 0;">@Model.HotelSection.CheckInDate.ToString("yyyy-MM-dd")</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;"><strong>Check-out:</strong></td>
+          <td style="padding:8px 0;">@Model.HotelSection.CheckOutDate.ToString("yyyy-MM-dd")</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;"><strong>Supplier reference:</strong></td>
+          <td style="padding:8px 0;"><code>@Model.HotelSection.SupplierRef</code></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;"><strong>Booking reference:</strong></td>
+          <td style="padding:8px 0;">@Model.HotelSection.BookingReference</td>
+        </tr>
+      </table>
+      <p style="color:#6b7280;font-size:13px;">Hotel cancellation policy is per the supplier terms on your voucher.</p>
+    }
+
+    @if (Model.CarSection != null)
+    {
+      <h2 style="color:#0a3d62;font-size:18px;margin-top:24px;">Car Hire</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:8px 0;"><strong>Vendor:</strong></td>
+          <td style="padding:8px 0;">@Model.CarSection.VendorName</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;"><strong>Pick-up:</strong></td>
+          <td style="padding:8px 0;">@Model.CarSection.PickupLocation @ @Model.CarSection.PickupAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;"><strong>Drop-off:</strong></td>
+          <td style="padding:8px 0;">@Model.CarSection.DropoffLocation @ @Model.CarSection.DropoffAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;"><strong>Supplier reference:</strong></td>
+          <td style="padding:8px 0;"><code>@Model.CarSection.SupplierRef</code></td>
+        </tr>
+      </table>
+      <p style="color:#6b7280;font-size:13px;">Car-hire cancellation policy is per the vendor terms on your voucher.</p>
+    }
+
+    <h2 style="color:#0a3d62;font-size:18px;margin-top:24px;">Payment</h2>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr>
+        <td style="padding:8px 0;"><strong>Amount charged:</strong></td>
+        <td style="padding:8px 0;">@Model.ChargedAmount.ToString("0.00") @Model.Currency</td>
+      </tr>
+      @if (Model.IsPartial && Model.RefundedAmount > 0m)
+      {
+        <tr>
+          <td style="padding:8px 0;"><strong>Released (not charged):</strong></td>
+          <td style="padding:8px 0;">@Model.RefundedAmount.ToString("0.00") @Model.Currency</td>
+        </tr>
+      }
+    </table>
+
+    <p>If you need assistance, our support team is available on @Model.SupportPhone.</p>
+  </div>
+  @{ await IncludeAsync("_Footer", Model); }
+</body>
+</html>

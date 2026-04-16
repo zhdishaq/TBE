@@ -1,0 +1,49 @@
+@model TBE.NotificationService.API.Templates.Models.CarVoucherModel
+<!--SUBJECT:Car Hire Voucher — @Model.SupplierRef-->
+<!DOCTYPE html>
+<html>
+<body style="font-family:Arial,sans-serif;color:#111827;max-width:640px;margin:0 auto;">
+  @{ await IncludeAsync("_Header", Model); }
+  <div style="padding:24px;">
+    <h1 style="color:#0a3d62;">Hello @Model.GuestFullName,</h1>
+    <p>Your car hire is confirmed. Here is a summary of your reservation:</p>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px;">
+      <tr>
+        <td style="padding:8px 0;"><strong>Vendor:</strong></td>
+        <td style="padding:8px 0;">@Model.VendorName</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Pick-up location:</strong></td>
+        <td style="padding:8px 0;">@Model.PickupLocation</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Pick-up time:</strong></td>
+        <td style="padding:8px 0;">@Model.PickupAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Drop-off location:</strong></td>
+        <td style="padding:8px 0;">@Model.DropoffLocation</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Drop-off time:</strong></td>
+        <td style="padding:8px 0;">@Model.DropoffAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Supplier reference:</strong></td>
+        <td style="padding:8px 0;"><code>@Model.SupplierRef</code></td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Booking reference:</strong></td>
+        <td style="padding:8px 0;">@Model.BookingReference</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;"><strong>Total:</strong></td>
+        <td style="padding:8px 0;">@Model.TotalAmount.ToString("0.00") @Model.Currency</td>
+      </tr>
+    </table>
+    <p>Your PDF voucher is attached. Please present it at the rental counter along with your driver's license and the payment card used for booking.</p>
+    <p>If you need assistance, our support team is available on @Model.SupportPhone.</p>
+  </div>
+  @{ await IncludeAsync("_Footer", Model); }
+</body>
+</html>
