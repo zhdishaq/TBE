@@ -15,7 +15,7 @@
     <ProjectReference Include="..\..\services\NotificationService\NotificationService.Infrastructure\NotificationService.Infrastructure.csproj" />
     <ProjectReference Include="..\..\services\CrmService\CrmService.Infrastructure\CrmService.Infrastructure.csproj" />
     <ProjectReference Include="..\..\services\BackofficeService\BackofficeService.Infrastructure\BackofficeService.Infrastructure.csproj" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.25" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />

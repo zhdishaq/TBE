@@ -7,7 +7,9 @@
       "Bash(find:*)",
       "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs agent-skills gsd-project-researcher)",
       "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs agent-skills gsd-research-synthesizer)",
-      "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs agent-skills gsd-roadmapper)"
+      "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs agent-skills gsd-roadmapper)",
+      "Bash(ls c:/Users/zhdishaq/source/repos/TBE/Directory.*.props)",
+      "Bash(ls c:/Users/zhdishaq/source/repos/TBE/*.props)"
     ]
   }
 }
