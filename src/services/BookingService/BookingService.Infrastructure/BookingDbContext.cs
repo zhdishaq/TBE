@@ -1,5 +1,6 @@
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using TBE.BookingService.Application.Baskets;
 using TBE.BookingService.Application.Saga;
 using TBE.BookingService.Infrastructure.Configurations;
 
@@ -14,6 +15,10 @@ public class BookingDbContext : DbContext
     public DbSet<BookingSagaState> BookingSagaStates => Set<BookingSagaState>();
     public DbSet<SagaDeadLetter> SagaDeadLetters => Set<SagaDeadLetter>();
     public DbSet<HotelBookingSagaState> HotelBookingSagaStates => Set<HotelBookingSagaState>();
+
+    // Plan 04-04 — Trip Builder basket aggregate + inbox-pattern event log (D-08/D-10).
+    public DbSet<Basket> Baskets => Set<Basket>();
+    public DbSet<BasketEventLog> BasketEventLogs => Set<BasketEventLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,5 +35,9 @@ public class BookingDbContext : DbContext
 
         // Plan 04-03 — hotel-booking aggregate (HOTB-01..05, D-16)
         modelBuilder.ApplyConfiguration(new HotelBookingSagaStateMap());
+
+        // Plan 04-04 — Trip Builder basket + inbox event log (PKG-01..04, D-08/D-10)
+        modelBuilder.ApplyConfiguration(new BasketMap());
+        modelBuilder.ApplyConfiguration(new BasketEventLogMap());
     }
 }

@@ -108,6 +108,65 @@ public sealed class StripePaymentGateway(
         }
     }
 
+    public async Task<CaptureResult> CapturePartialAsync(
+        string paymentIntentId,
+        long amountToCaptureMinorUnits,
+        bool finalCapture,
+        string idempotencyKey,
+        CancellationToken ct)
+    {
+        EnsureApiKey();
+        // D-10: the canonical Stripe.net knobs for sequential partial capture against
+        // a single combined PaymentIntent are AmountToCapture + FinalCapture.
+        var captureOptions = new PaymentIntentCaptureOptions
+        {
+            AmountToCapture = amountToCaptureMinorUnits,
+            FinalCapture = finalCapture
+        };
+        var requestOptions = new RequestOptions
+        {
+            IdempotencyKey = idempotencyKey
+        };
+        try
+        {
+            var pi = await _intents.CaptureAsync(paymentIntentId, captureOptions, requestOptions, ct);
+            log.LogInformation(
+                "stripe basket capture-partial ok pi={PaymentIntentId} final={FinalCapture} status={Status}",
+                pi.Id, finalCapture, pi.Status);
+            return new CaptureResult(pi.Id, pi.Status);
+        }
+        catch (StripeException ex)
+        {
+            log.LogWarning(
+                "stripe basket capture-partial failed pi={PaymentIntentId} code={Code}",
+                paymentIntentId, ex.StripeError?.Code);
+            throw new PaymentGatewayException("capture-partial failed", ex.StripeError?.Code, ex);
+        }
+    }
+
+    public async Task VoidAsync(string paymentIntentId, string idempotencyKey, CancellationToken ct)
+    {
+        EnsureApiKey();
+        var requestOptions = new RequestOptions
+        {
+            IdempotencyKey = idempotencyKey
+        };
+        try
+        {
+            var pi = await _intents.CancelAsync(paymentIntentId, null, requestOptions, ct);
+            log.LogInformation(
+                "stripe basket void ok pi={PaymentIntentId} status={Status}",
+                pi.Id, pi.Status);
+        }
+        catch (StripeException ex)
+        {
+            log.LogWarning(
+                "stripe basket void failed pi={PaymentIntentId} code={Code}",
+                paymentIntentId, ex.StripeError?.Code);
+            throw new PaymentGatewayException("void failed", ex.StripeError?.Code, ex);
+        }
+    }
+
     public async Task CancelAsync(Guid bookingId, string paymentIntentId, CancellationToken ct)
     {
         EnsureApiKey();

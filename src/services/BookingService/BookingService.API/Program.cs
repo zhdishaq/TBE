@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
+using TBE.BookingService.Application.Baskets;
 using TBE.BookingService.Application.Consumers;
 using TBE.BookingService.Application.Consumers.CompensationConsumers;
 using TBE.BookingService.Application.Pdf;
@@ -11,6 +12,7 @@ using TBE.BookingService.Application.Saga;
 using TBE.BookingService.Application.Ttl;
 using TBE.BookingService.Application.Ttl.Adapters;
 using TBE.BookingService.Infrastructure;
+using TBE.BookingService.Infrastructure.Baskets;
 using TBE.BookingService.Infrastructure.Pdf;
 using TBE.BookingService.Infrastructure.Ttl;
 using TBE.Common.Messaging;
@@ -85,6 +87,13 @@ try
     // DbContext that the controller injects alongside it.
     builder.Services.AddScoped<IBookingReceiptPdfGenerator, QuestPdfBookingReceiptGenerator>();
 
+    // Plan 04-04 / D-08 — the basket single-PI gateway. A thin bus-command adapter
+    // (NullBasketPaymentGateway) is bound by default so tests and local dev run
+    // without PaymentService; production wires a real adapter forwarding to the
+    // PaymentService.IStripePaymentGateway.CapturePartialAsync / VoidAsync API
+    // via MassTransit request/response (PCI SAQ-A isolation — PAY-08).
+    builder.Services.AddScoped<IBasketPaymentGateway, NullBasketPaymentGateway>();
+
     builder.Services.AddControllers();
 
     // MassTransit with RabbitMQ + BookingSaga + outbox
@@ -101,6 +110,8 @@ try
                 });
             x.AddConsumer<SagaDeadLetterSink>();
             x.AddConsumer<CreatePnrConsumer>();
+            // Plan 04-04 / D-08 — sequential partial capture orchestrator on a single combined PI.
+            x.AddConsumer<BasketPaymentOrchestrator>();
         },
         configureOutbox: x =>
         {
