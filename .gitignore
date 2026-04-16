@@ -5,9 +5,24 @@ docker-compose.override.yml
 # Build outputs
 **/bin/
 **/obj/
+**/node_modules/
 
 # Rider / VS
 .idea/
 *.user
 .vs/
-ui/
+# Ignore the root-level ui/ starterKit reference tree only.
+# Anchored so it does not match nested ui/ dirs such as
+# src/portals/b2c-web/components/ui/ or public/media/ui/.
+/ui/
+
+# Next.js build output
+**/.next/
+
+# Frontend test output
+**/playwright-report/
+**/test-results/
+**/coverage/
+
+# TypeScript build info
+**/*.tsbuildinfo
