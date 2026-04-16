@@ -28,5 +28,5 @@ RUN dotnet publish "TBE.DbMigrator.csproj" -c Release -o /app/publish /p:UseAppH
 
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "TBE.DbMigrator.dll"]
