@@ -18,4 +18,16 @@
     <PackageReference Include="StackExchange.Redis" Version="2.12.14" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.5" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- IATA airport dataset (OpenFlights, CC-BY-SA 3.0) bundled next to the -->
+    <!-- service assembly so IataAirportSeeder can read it via AppContext.BaseDirectory. -->
+    <Content Include="..\..\..\..\data\iata\airports.dat">
+      <Link>data\iata\airports.dat</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\..\..\data\iata\README.md">
+      <Link>data\iata\README.md</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

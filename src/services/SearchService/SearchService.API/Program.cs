@@ -1,7 +1,10 @@
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using Serilog.Formatting.Compact;
+using StackExchange.Redis;
 using TBE.Common.Messaging;
+using TBE.SearchService.Application.Airports;
 using TBE.SearchService.Application.Cache;
 
 Log.Logger = new LoggerConfiguration()
@@ -44,6 +47,22 @@ try
             ?? "localhost:6379";
     });
 
+    // Shared IConnectionMultiplexer — used by IataAirportSeeder and RedisAirportLookup
+    // (StackExchangeRedisCache uses its own internal multiplexer, so we keep this one
+    // explicitly registered as a singleton for the airports subsystem.)
+    builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    {
+        var cs = builder.Configuration.GetConnectionString("Redis")
+            ?? builder.Configuration["Redis:ConnectionString"]
+            ?? "localhost:6379";
+        return ConnectionMultiplexer.Connect(cs);
+    });
+
+    // IATA airport typeahead (CONTEXT D-18). Seeder runs at startup and populates
+    // iata:airports + iata:idx:prefix; RedisAirportLookup serves /airports queries.
+    builder.Services.AddSingleton<IAirportLookup, RedisAirportLookup>();
+    builder.Services.AddHostedService<IataAirportSeeder>();
+
     // HybridCache (L1 in-process + L2 Redis)
     builder.Services.AddHybridCache(opts =>
     {
@@ -70,8 +89,25 @@ try
             limiterOpts.PermitLimit       = 8;
             limiterOpts.Window            = TimeSpan.FromSeconds(1);
             limiterOpts.SegmentsPerWindow = 4;
-            limiterOpts.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+            limiterOpts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
             limiterOpts.QueueLimit        = 0;  // no queue — reject immediately
+        });
+
+        // Airports typeahead: 60 req/min/IP fixed window (T-04-02-04). Partitioned
+        // by client IP so a single abusive caller cannot starve the endpoint for
+        // other users. Anonymous endpoint — no Authorization header to key off.
+        opts.AddPolicy("airports", httpContext =>
+        {
+            var ip = httpContext.Connection.RemoteIpAddress?.ToString()
+                     ?? httpContext.Request.Headers["X-Forwarded-For"].ToString()
+                     ?? "unknown";
+            return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit          = 60,
+                Window               = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit           = 0,
+            });
         });
     });
 
