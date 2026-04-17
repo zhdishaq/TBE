@@ -1,5 +1,6 @@
 using MassTransit;
 using TBE.Contracts.Commands;
+using TBE.Contracts.Enums;
 using TBE.Contracts.Events;
 
 namespace TBE.BookingService.Application.Saga;
@@ -33,6 +34,10 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
     public State Capturing { get; private set; } = null!;
     public State Confirmed { get; private set; } = null!;
 
+    // Plan 05-02 Task 2 — B2B wallet reserve states (D-24).
+    public State WalletReserving { get; private set; } = null!;
+    public State WalletReserveFailedState { get; private set; } = null!;
+
     // Terminal/compensation
     public State Compensating { get; private set; } = null!;
     public State Failed { get; private set; } = null!;
@@ -44,6 +49,14 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
     public Event<PaymentAuthorized> PaymentAuthorized { get; private set; } = null!;
     public Event<TicketIssued> TicketIssued { get; private set; } = null!;
     public Event<PaymentCaptured> PaymentCaptured { get; private set; } = null!;
+
+    // Plan 05-02 Task 2 — B2B wallet-reserve events (D-40).
+    public Event<WalletReserved> WalletReserved { get; private set; } = null!;
+    public Event<WalletReserveFailed> WalletReserveFailed { get; private set; } = null!;
+
+    // Plan 05-02 Task 2 — follow-up event stamping agency pricing + customer contact
+    // onto the saga immediately after BookingInitiated (D-33, D-36, D-37, B2B-04).
+    public Event<AgentBookingDetailsCaptured> AgentBookingDetailsCaptured { get; private set; } = null!;
 
     // Failure callbacks
     public Event<PriceReconfirmationFailed> PriceReconfirmationFailed { get; private set; } = null!;
@@ -66,6 +79,11 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
         Event(() => TicketIssued, x => x.CorrelateById(m => m.Message.BookingId));
         Event(() => PaymentCaptured, x => x.CorrelateById(m => m.Message.BookingId));
 
+        Event(() => WalletReserved, x => x.CorrelateById(m => m.Message.BookingId));
+        Event(() => WalletReserveFailed, x => x.CorrelateById(m => m.Message.BookingId));
+
+        Event(() => AgentBookingDetailsCaptured, x => x.CorrelateById(m => m.Message.BookingId));
+
         Event(() => PriceReconfirmationFailed, x => x.CorrelateById(m => m.Message.BookingId));
         Event(() => PnrCreationFailed, x => x.CorrelateById(m => m.Message.BookingId));
         Event(() => PaymentAuthorizationFailed, x => x.CorrelateById(m => m.Message.BookingId));
@@ -85,7 +103,18 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
                 {
                     ctx.Saga.BookingReference = ctx.Message.BookingReference;
                     ctx.Saga.ProductType = ctx.Message.ProductType;
-                    ctx.Saga.Channel = ctx.Message.Channel;
+                    // Plan 05-02 Task 2 — preserve the Phase-3 string channel
+                    // value on ChannelText for backwards compatibility, and
+                    // parse it into the typed enum used by the B2B IfElse
+                    // branch at PnrCreated. BookingInitiated.Channel remains
+                    // a string on the contract (Phase-3 compat); server-side
+                    // writers — including AgentBookingsController in this
+                    // plan — send "b2b".
+                    ctx.Saga.ChannelText = ctx.Message.Channel;
+                    // Plan 05-02 Task 2 RED — intentionally not parsing the
+                    // typed Channel enum here so the saga's IfElse branch
+                    // fires the B2C path regardless of BookingInitiated.Channel.
+                    // Task 2 GREEN flips the parse to string.Equals("b2b", ...).
                     ctx.Saga.UserId = ctx.Message.UserId;
                     ctx.Saga.TotalAmount = ctx.Message.TotalAmount;
                     ctx.Saga.Currency = ctx.Message.Currency;
@@ -124,19 +153,59 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
                     ctx.Saga.TicketingDeadlineUtc = ctx.Message.TicketingDeadlineUtc;
                     ctx.Saga.LastSuccessfulStep = "PnrCreated";
                 })
-                .Publish(ctx => new AuthorizePaymentCommand(
-                    ctx.Saga.CorrelationId,
-                    ctx.Saga.TotalAmount * 100m,
-                    ctx.Saga.Currency,
-                    ctx.Saga.UserId,
-                    string.Empty /* PaymentMethodId — provided by checkout flow in 03-02 */))
-                .TransitionTo(Authorizing),
+                // Plan 05-02 Task 2 — IfElse on Channel == Channel.B2B at
+                // PnrCreated. B2B → WalletReserveCommand (agency wallet debit,
+                // idempotent on BookingId per T-05-02-04). B2C → unchanged
+                // AuthorizePaymentCommand (Stripe authorize; Plan 03-01
+                // regression preserved).
+                .IfElse(ctx => ctx.Saga.Channel == Channel.B2B,
+                    b2b => b2b
+                        .Publish(ctx => new WalletReserveCommand(
+                            CorrelationId: ctx.Saga.CorrelationId,
+                            BookingId: ctx.Saga.CorrelationId,
+                            AgencyId: ctx.Saga.AgencyId ?? Guid.Empty,
+                            WalletId: ctx.Saga.WalletId ?? Guid.Empty,
+                            Amount: ctx.Saga.AgencyNetFare ?? ctx.Saga.TotalAmount,
+                            Currency: ctx.Saga.Currency,
+                            IdempotencyKey: ctx.Saga.CorrelationId.ToString()))
+                        .TransitionTo(WalletReserving),
+                    b2c => b2c
+                        .Publish(ctx => new AuthorizePaymentCommand(
+                            ctx.Saga.CorrelationId,
+                            ctx.Saga.TotalAmount * 100m,
+                            ctx.Saga.Currency,
+                            ctx.Saga.UserId,
+                            string.Empty /* PaymentMethodId — provided by checkout flow in 03-02 */))
+                        .TransitionTo(Authorizing)),
             When(PnrCreationFailed)
                 .Unschedule(HardTimeout)
                 .Publish(ctx => new BookingFailed(
                     ctx.Saga.CorrelationId, Guid.NewGuid(), ctx.Message.Cause,
                     ctx.Saga.LastSuccessfulStep ?? "PriceReconfirmed", DateTimeOffset.UtcNow))
                 .TransitionTo(Failed));
+
+        // Plan 05-02 Task 2 — B2B wallet-reserve outcomes. Success issues the
+        // ticket (wallet hold commits post-ticketing in Phase 6). Failure
+        // compensates by voiding the PNR we just created (Pitfall 23 — cancel
+        // before customer-visible money movement); no charge occurred so no
+        // refund is needed.
+        During(WalletReserving,
+            When(WalletReserved)
+                .Then(ctx =>
+                {
+                    ctx.Saga.WalletReservationTxId = ctx.Message.LedgerEntryId;
+                    ctx.Saga.LastSuccessfulStep = "WalletReserved";
+                })
+                .Publish(ctx => new IssueTicketCommand(ctx.Saga.CorrelationId, ctx.Saga.GdsPnr ?? string.Empty))
+                .TransitionTo(TicketIssuing),
+            When(WalletReserveFailed)
+                .Then(ctx => ctx.Saga.FailureReason = ctx.Message.Reason)
+                .Publish(ctx => new VoidPnrCommand(ctx.Saga.CorrelationId, ctx.Saga.GdsPnr ?? string.Empty, ctx.Message.Reason))
+                .Unschedule(HardTimeout)
+                .Publish(ctx => new BookingFailed(
+                    ctx.Saga.CorrelationId, Guid.NewGuid(), ctx.Message.Reason,
+                    ctx.Saga.LastSuccessfulStep ?? "PnrCreated", DateTimeOffset.UtcNow))
+                .TransitionTo(WalletReserveFailedState));
 
         During(Authorizing,
             When(PaymentAuthorized)
@@ -206,6 +275,29 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
                     ctx.Saga.CorrelationId, Guid.NewGuid(), ctx.Message.Cause,
                     ctx.Saga.LastSuccessfulStep ?? "TicketIssued", DateTimeOffset.UtcNow))
                 .TransitionTo(Failed));
+
+        // Plan 05-02 Task 2 — the agency pricing + customer-contact snapshot
+        // follows BookingInitiated on the outbox in the same controller action.
+        // Handled DuringAny so it lands before PnrCreated fires the B2B IfElse,
+        // regardless of which forward state the saga has already transitioned
+        // to (PriceReconfirming → PnrCreating). Idempotent: repeated deliveries
+        // overwrite identical frozen amounts, satisfying D-40.
+        DuringAny(
+            When(AgentBookingDetailsCaptured)
+                .Then(ctx =>
+                {
+                    ctx.Saga.AgencyId = ctx.Message.AgencyId;
+                    ctx.Saga.AgencyNetFare = ctx.Message.AgencyNetFare;
+                    ctx.Saga.AgencyMarkupAmount = ctx.Message.AgencyMarkupAmount;
+                    ctx.Saga.AgencyGrossAmount = ctx.Message.AgencyGrossAmount;
+                    ctx.Saga.AgencyCommissionAmount = ctx.Message.AgencyCommissionAmount;
+                    ctx.Saga.AgencyMarkupOverride = ctx.Message.AgencyMarkupOverride;
+                    ctx.Saga.CustomerName = ctx.Message.CustomerName;
+                    ctx.Saga.CustomerEmail = ctx.Message.CustomerEmail;
+                    ctx.Saga.CustomerPhone = ctx.Message.CustomerPhone;
+                    if (!string.IsNullOrWhiteSpace(ctx.Message.OfferId))
+                        ctx.Saga.OfferToken ??= ctx.Message.OfferId;
+                }));
 
         SetCompletedWhenFinalized();
     }

@@ -1,8 +1,13 @@
 namespace TBE.Contracts.Events;
 
-public record WalletReserved(Guid BookingId, Guid WalletId, Guid ReservationTxId, decimal Amount, DateTimeOffset At);
-
-public record WalletReservationFailed(Guid BookingId, Guid WalletId, string Cause, decimal AttemptedAmount, decimal AvailableBalance);
+// WalletReserved moved to Messages/WalletReserved.cs in 05-02 Task 2 with
+// plan-shape (CorrelationId, BookingId, LedgerEntryId, BalanceAfter) so the
+// BookingSaga can correlate by CorrelationId and surface post-reserve balance
+// to the wallet chip (Plan 05-03).
+//
+// WalletReservationFailed superseded by Messages/WalletReserveFailed.cs
+// (plan-shape (CorrelationId, BookingId, Reason)). Old balance fields were
+// consumer-implementation-specific and never observed outside PaymentService.
 
 public record WalletCommitted(Guid BookingId, Guid WalletId, Guid ReservationTxId, DateTimeOffset At);
 

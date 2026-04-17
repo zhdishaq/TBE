@@ -17,6 +17,30 @@ public record BookingInitiated(
     DateTimeOffset InitiatedAt);
 
 /// <summary>
+/// Plan 05-02 Task 2 — published by <c>AgentBookingsController</c> immediately after
+/// <see cref="BookingInitiated"/> when the channel is B2B. Carries the server-stamped
+/// <c>AgencyId</c> (D-33), the frozen agency pricing snapshot (D-36/D-41), the
+/// per-booking markup override (D-37, admin-only — enforced at the controller),
+/// and the customer-contact snapshot captured at on-behalf booking time (B2B-04).
+/// Consumed by the <c>BookingSaga</c> via a <c>DuringAny</c> handler so it lands on
+/// the saga state before <see cref="PnrCreated"/> fires and the B2B IfElse branch
+/// evaluates.
+/// </summary>
+public record AgentBookingDetailsCaptured(
+    Guid BookingId,
+    Guid AgencyId,
+    decimal AgencyNetFare,
+    decimal AgencyMarkupAmount,
+    decimal AgencyGrossAmount,
+    decimal AgencyCommissionAmount,
+    decimal? AgencyMarkupOverride,
+    string? CustomerName,
+    string? CustomerEmail,
+    string? CustomerPhone,
+    string? OfferId,
+    DateTimeOffset At);
+
+/// <summary>
 /// Published once the PricingService re-confirms the live fare against the stored offer token.
 /// </summary>
 public record PriceReconfirmed(Guid BookingId, decimal ReconfirmedAmount, string Currency, DateTimeOffset At);

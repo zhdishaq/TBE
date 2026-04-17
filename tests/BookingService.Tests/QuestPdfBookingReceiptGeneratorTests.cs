@@ -72,7 +72,7 @@ public class QuestPdfBookingReceiptGeneratorTests
         UserId = "user-owner-abc",
         BookingReference = "TBE-260416-ABCDEF01",
         ProductType = "flight",
-        Channel = "b2c",
+        ChannelText = "b2c",
         Currency = "GBP",
         PaymentMethod = "card",
         TotalAmount = 150m,

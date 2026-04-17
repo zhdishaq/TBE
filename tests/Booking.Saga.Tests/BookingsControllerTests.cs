@@ -83,7 +83,7 @@ public class BookingsControllerTests
             CorrelationId = bookingId,
             BookingReference = "TBE-260416-AAA",
             ProductType = "flight",
-            Channel = "b2c",
+            ChannelText = "b2c",
             UserId = "user-B",
             Currency = "USD",
             PaymentMethod = "card",

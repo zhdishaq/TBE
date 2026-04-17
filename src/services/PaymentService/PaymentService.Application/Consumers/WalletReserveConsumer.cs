@@ -18,10 +18,15 @@ public sealed class WalletReserveConsumer(
         var msg = ctx.Message;
         try
         {
+            // Plan 05-02 Task 2 — contract now carries CorrelationId + AgencyId +
+            // IdempotencyKey per D-40 / T-05-02-04. WalletId is retained
+            // alongside AgencyId (Phase-3 compat with IWalletRepository.ReserveAsync
+            // which is keyed by wallet id). Future Plan 05-03 wires agent-admin
+            // top-up against the same AgencyId; resolver stays in this consumer.
             var txId = await wallet.ReserveAsync(msg.WalletId, msg.BookingId, msg.Amount, msg.Currency, ctx.CancellationToken);
-            await ctx.Publish(new WalletReserved(msg.BookingId, msg.WalletId, txId, msg.Amount, DateTimeOffset.UtcNow));
-
             var balance = await wallet.GetBalanceAsync(msg.WalletId, ctx.CancellationToken);
+            await ctx.Publish(new WalletReserved(msg.CorrelationId, msg.BookingId, txId, balance));
+
             if (balance < opts.CurrentValue.LowBalanceThreshold)
             {
                 await ctx.Publish(new WalletLowBalance(msg.WalletId, balance, opts.CurrentValue.LowBalanceThreshold, DateTimeOffset.UtcNow));
@@ -31,8 +36,7 @@ public sealed class WalletReserveConsumer(
         {
             log.LogInformation("wallet reserve rejected wallet={WalletId} attempted={Amount} available={Available}",
                 msg.WalletId, ex.AttemptedAmount, ex.AvailableBalance);
-            await ctx.Publish(new WalletReservationFailed(
-                msg.BookingId, msg.WalletId, "insufficient_balance", ex.AttemptedAmount, ex.AvailableBalance));
+            await ctx.Publish(new WalletReserveFailed(msg.CorrelationId, msg.BookingId, "insufficient_funds"));
         }
     }
 }

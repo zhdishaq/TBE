@@ -46,10 +46,10 @@ public record CancelAuthorizationCommand(Guid BookingId, string PaymentIntentId)
 /// </summary>
 public record RefundPaymentCommand(Guid BookingId, string PaymentIntentId, decimal AmountCents);
 
-/// <summary>
-/// B2B wallet command: place a reservation hold on the agency wallet.
-/// </summary>
-public record WalletReserveCommand(Guid BookingId, Guid WalletId, decimal Amount, string Currency);
+// WalletReserveCommand moved to Messages/WalletReserveCommand.cs in 05-02 Task 2
+// (plan-shape: CorrelationId, BookingId, AgencyId, WalletId, Amount, Currency,
+// IdempotencyKey). Keeping this comment as a signpost so future callers find
+// the canonical type quickly.
 
 /// <summary>
 /// B2B wallet command: commit a previously reserved amount.
