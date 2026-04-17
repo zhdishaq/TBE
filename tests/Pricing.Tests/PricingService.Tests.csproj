@@ -30,5 +30,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
     <ProjectReference Include="..\..\src\services\PricingService\PricingService.Application\PricingService.Application.csproj" />
+    <!-- Plan 05-02 Task 1: tests seed AgencyMarkupRules via PricingDbContext. -->
+    <ProjectReference Include="..\..\src\services\PricingService\PricingService.Infrastructure\PricingService.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

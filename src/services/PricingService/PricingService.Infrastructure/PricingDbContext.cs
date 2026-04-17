@@ -1,5 +1,6 @@
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using TBE.PricingService.Application.Agency;
 using TBE.PricingService.Application.Rules.Models;
 
 namespace TBE.PricingService.Infrastructure;
@@ -11,6 +12,9 @@ public class PricingDbContext : DbContext
     }
 
     public DbSet<MarkupRule> MarkupRules => Set<MarkupRule>();
+
+    /// <summary>Plan 05-02 / D-36 — per-agency markup rules (max 2 active rows per agency).</summary>
+    public DbSet<AgencyMarkupRule> AgencyMarkupRules => Set<AgencyMarkupRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -31,6 +35,31 @@ public class PricingDbContext : DbContext
             b.Property(r => r.Value).HasColumnType("decimal(18,4)");
             b.Property(r => r.MaxAmount).HasColumnType("decimal(18,4)");
             b.HasIndex(r => new { r.ProductType, r.Channel, r.IsActive });
+        });
+
+        // Plan 05-02 / D-36: AgencyMarkupRules with composite PK (AgencyId, RouteClass).
+        // Filtered unique index on IsActive=1 enforces the max-2-active-rows invariant
+        // (one base row with RouteClass NULL + at most one RouteClass override).
+        modelBuilder.Entity<AgencyMarkupRule>(b =>
+        {
+            b.ToTable("AgencyMarkupRules", "pricing");
+            // D-36: surrogate PK (see AgencyMarkupRule.Id XMLDOC) — max-2-active-rows
+            // invariant enforced by the filtered unique index below.
+            b.HasKey(r => r.Id);
+            b.Property(r => r.RouteClass).HasMaxLength(32);
+            b.Property(r => r.FlatAmount).HasColumnType("decimal(18,4)").IsRequired();
+            b.Property(r => r.PercentOfNet).HasColumnType("decimal(5,4)").IsRequired();
+            b.Property(r => r.IsActive).IsRequired();
+            b.Property(r => r.CreatedAt).HasColumnType("datetime2").IsRequired();
+            b.Property(r => r.UpdatedAt).HasColumnType("datetime2").IsRequired();
+            // D-36: filtered UNIQUE index on (AgencyId, RouteClass) where IsActive=1.
+            // SQL Server treats two NULL RouteClass values as equal within a unique
+            // index, so this enforces at most ONE active base row + ONE active
+            // override row per (agency, routeclass) tuple.
+            b.HasIndex(r => new { r.AgencyId, r.RouteClass })
+                .IsUnique()
+                .HasDatabaseName("IX_AgencyMarkupRules_Active")
+                .HasFilter("[IsActive] = 1");
         });
     }
 }
