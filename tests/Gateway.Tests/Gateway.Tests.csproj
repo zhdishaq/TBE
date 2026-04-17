@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Plan 05-01 Task 3 (Phase 5 B2B agent portal)
+    ===========================================
+    Integration tests for TBE.Gateway's B2B authorization policies.
+    Exercises:
+      - tbe-b2b JWT scheme audience validation (T-05-01-01 Pitfall 4)
+      - B2BPolicy (any of: agent / agent-admin / agent-readonly — D-32)
+      - B2BAdminPolicy (agent-admin only — T-05-01-02)
+      - realm_access.roles -> "roles" claim projection via
+        OnTokenValidated (Keycloak emits roles under the realm_access
+        envelope, not as flat top-level claims)
+
+    Tokens are minted in-process with a test RS256 key-pair; the
+    gateway's JwtBearer metadata handler is replaced with a stub that
+    returns the test signing key so ValidateAudience + ValidateIssuer
+    can run without a live Keycloak. YARP downstream clusters are
+    replaced with an in-memory endpoint so we only assert on the
+    gateway's auth gate status (401 / 403 / 200) — not on any
+    downstream service response.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Gateway.Tests</RootNamespace>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="7.5.1" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.5.1" />
+    <PackageReference Include="FluentAssertions" Version="6.12.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\gateway\TBE.Gateway\TBE.Gateway.csproj" />
+  </ItemGroup>
+</Project>
