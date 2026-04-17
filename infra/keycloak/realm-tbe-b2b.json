@@ -1,0 +1,97 @@
+{
+  "_meta": {
+    "purpose": "Phase 5 Plan 05-00 Task 3 realm patch. Adds the tbe-b2b realm with tbe-agent-portal OIDC client (redirectUris :3001 per D-22), audience mapper emitting aud=tbe-api (Pitfall 4), agency_id user-attribute mapper (D-23), and tbe-b2b-admin service client with manage-users role (Pitfall 8). Import with `kc.sh import --file /opt/keycloak/data/import/realm-tbe-b2b.json` or partial import via Keycloak admin console.",
+    "phase": "05-b2b-agent-portal",
+    "plan": "05-00",
+    "locked_decisions": ["D-22", "D-23", "D-32", "D-33", "D-35"],
+    "supersedes": "infra/keycloak/realms/tbe-b2b-realm.json (partial — this file adds audience + agency_id mappers, service-account client, and agent roles)"
+  },
+  "realm": "tbe-b2b",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "verifyEmail": true,
+  "accessTokenLifespan": 300,
+  "clients": [
+    {
+      "_comment": "B2B agent OIDC client consumed by src/portals/b2b-web via Auth.js v5 (D-22, D-32). redirectUris and webOrigins reference port 3001 per UI-SPEC §Portal Differentiation.",
+      "clientId": "tbe-agent-portal",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:3001/*", "https://b2b.local/*"],
+      "webOrigins": ["http://localhost:3001", "https://b2b.local"],
+      "secret": "${KEYCLOAK_B2B_CLIENT_SECRET}",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "_comment": "Pitfall 4 fix — emits aud=tbe-api on access tokens so YARP JwtBearer can validate the B2B JWT scheme (Plan 05-01 gateway cutover).",
+          "name": "tbe-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "tbe-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "_comment": "D-23 — emit agency_id user attribute as JWT claim on access + id tokens. Server reads this in every B2B endpoint per Pitfall 26 / 28. Single-valued per D-33 (one user = one agency).",
+          "name": "agency-id-attribute",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "agency_id",
+            "claim.name": "agency_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "false"
+          }
+        }
+      ]
+    },
+    {
+      "_comment": "Pitfall 8 fix — dedicated service client for admin operations (create sub-agent per B2B-10 / Plan 05-01, send-verify-email). client_credentials grant; secret kept out of the browser bundle (no NEXT_PUBLIC_ prefix).",
+      "clientId": "tbe-b2b-admin",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_B2B_ADMIN_CLIENT_SECRET}",
+      "protocol": "openid-connect"
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "agent",
+        "description": "D-32 — standard travel agent. Agency-wide booking visibility (D-34) but no /admin/* access."
+      },
+      {
+        "name": "agent-admin",
+        "description": "D-32 — agency admin. Adds /admin/agents (sub-agent create per B2B-10) and /admin/wallet (top-up per B2B-07) access; may set per-booking markup override per D-37."
+      },
+      {
+        "name": "agent-readonly",
+        "description": "D-35 — finance/compliance oversight. Read-only agency-wide view; every mutation MUST 403 for this role."
+      }
+    ]
+  },
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "_comment": "Service-account role binding — allows tbe-b2b-admin to call Keycloak Admin REST API users / send-verify-email endpoints (Pitfall 8). Plan 05-01 Task 2 exercises create-user + role-assign against this grant.",
+        "client": "tbe-b2b-admin",
+        "roles": ["manage-users", "view-users"]
+      }
+    ]
+  }
+}

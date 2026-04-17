@@ -72,3 +72,50 @@ payload on failure so you can see exactly which claim is missing.
    `manage-users` from `realm-management`.
 5. Copy both client secrets into `.env` / secret store.
 6. Run `verify-audience-smoke.sh`.
+
+## tbe-b2b realm (Phase 5 Plan 05-00)
+
+**Purpose:** B2B Agent Portal realm — separate from `tbe-b2c` per 05-CONTEXT
+D-32 (shared-browser-session SSO only; no OIDC brokering between the two
+realms). The B2B portal listens on port 3001 (D-22) and its auth layer is
+forked, not shared, from the B2C portal.
+
+**Delta file:** `realm-tbe-b2b.json` (layers on top of the Phase 1 base
+`tbe-b2b` realm export; does not replace it).
+
+**Locked decisions embedded:**
+- D-22 — separate portal on :3001 (`redirectUris`: `http://localhost:3001/*`)
+- D-23 — `agency_id` user-attribute mapper emitted on access + id tokens
+- D-32 — separate realm, no brokering
+- D-33 — one user = one agency (single-valued `agency_id`, `multivalued: false`)
+- D-35 — `agent-readonly` role = finance/compliance oversight (read-only)
+
+### Import
+
+1. Keycloak admin → **Realms → Add realm → Import** → select
+   `infra/keycloak/realm-tbe-b2b.json`.
+2. Verify realm roles exist: `agent`, `agent-admin`, `agent-readonly`.
+3. Verify `tbe-b2b-admin` service-account client has `manage-users` +
+   `view-users` on the `realm-management` client.
+4. Verify the `tbe-agent-portal` client's Dedicated scope contains both the
+   `tbe-api-audience` mapper (Pitfall 4) and the `agency-id-attribute`
+   mapper (D-23).
+5. Create a test agent user; populate the `agency_id` user attribute with
+   a GUID (this is the claim every B2B endpoint filters by per Pitfall 26).
+6. Populate env vars: `KEYCLOAK_B2B_ISSUER`, `KEYCLOAK_B2B_CLIENT_ID`,
+   `KEYCLOAK_B2B_CLIENT_SECRET`, `KEYCLOAK_B2B_ADMIN_CLIENT_ID`,
+   `KEYCLOAK_B2B_ADMIN_CLIENT_SECRET`.
+
+### Smoke
+
+Run `./verify-audience-smoke-b2b.sh` from this directory.
+
+| Exit | Meaning                                                                             |
+| ---- | ----------------------------------------------------------------------------------- |
+| `0`  | `aud=tbe-api` verified — Plan 05-01 gateway cutover will pass ValidateAudience.     |
+| `1`  | Audience mismatch — mapper missing or misconfigured; re-import the delta.           |
+| `2`  | Required env vars unset — populate `.env` and re-run (fail-closed per T-05-00-07).  |
+
+The gateway `ValidateAudience=false → true` flip for the B2B JWT scheme
+lands in Plan 05-01; until that flip this smoke is the ONLY gate proving
+the audience claim arrives correctly on B2B tokens.
