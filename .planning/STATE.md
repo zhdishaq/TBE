@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 05
-last_updated: "2026-04-17T15:54:44.472Z"
+last_updated: "2026-04-18T00:10:00.000Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 22
-  completed_plans: 23
+  completed_plans: 25
   percent: 100
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 ## Current Status
 
 **Milestone:** v1.0 — Full Platform
-**Phase:** 05 — B2B Agent Portal — Plan 05-01 complete (agent onboarding + gateway B2B audience flip)
-**Last action:** Plan 05-01 executed atomically as 3 TDD tasks (6 commits — RED/GREEN each). `162604c` + `2573d7e` (Task 1 Auth.js session + authenticated header with role-conditional Admin nav), `8911572` + `67ca061` (Task 2 sub-agent CRUD via Keycloak Admin API with Pitfall 28 server-side agency_id injection + Radix Dialog create + Radix AlertDialog deactivate + TanStack Query list), `7d6e1e9` + `e3b8a0f` (Task 3 gateway scheme renamed `B2B` → `tbe-b2b` with `ValidateAudience=true` / `Audience="tbe-api"` + OnTokenValidated `realm_access.roles` projection + `B2BPolicy`/`B2BAdminPolicy` with `AddAuthenticationSchemes("tbe-b2b")` pin + new YARP routes for `/api/b2b/wallet` and `/api/b2b/invoices` + Gateway.Tests integration suite 8/8 passing). B2B-01 + B2B-02 marked complete in REQUIREMENTS.md. 4 auto-fixed deviations documented in 05-01-SUMMARY.md (scheme rename, NuGet vulnerability bump, realm_access projection, TestServer vs WebApplicationFactory).
-**Last session stop:** 2026-04-17T15:30Z — Plan 05-01 complete; next: `/gsd-execute-phase 05` for Plan 05-02 (booking-saga B2B branch + pricing/markup + AgencyPriceRequested).
+**Phase:** 05 — B2B Agent Portal — Plan 05-02 complete (booking-saga B2B branch + pricing/markup + portal dual-pricing + wallet checkout)
+**Last action:** Plan 05-02 executed atomically as 3 TDD tasks (6 commits — RED/GREEN each). `74c3aeb` + `c947af9` (Task 1 AgencyMarkupRules engine + AgencyPriceRequestedConsumer + filtered unique index + 4-tuple net/markup/gross/commission with override??base resolver), `90e9607` + `e021622` (Task 2 BookingSagaState B2B columns + saga IfElse branch at PnrCreated routing B2B→WalletReserveCommand/B2C→AuthorizePaymentCommand + AgentBookingsController server-stamping AgencyId/Channel from JWT with D-34/D-35/D-37 gates + T-05-02-07 audit log + DuringAny AgentBookingDetailsCaptured handler), `5720842` + `6ed72e5` (Task 3 b2b portal 4-column dual-pricing grid + tabular-nums + aria-label + commission sort + indigo-600 selection + CheckoutDetailsForm admin-only override + DebitSummary CTA routing + InsufficientFundsPanel role-aware copy + WalletChip 30s poll + /api/wallet/balance nodejs route + Header async RSC prehydration). B2B-03 + B2B-04 + B2B-05 + B2B-06 marked complete in REQUIREMENTS.md. 3 auto-fixed deviations documented in 05-02-SUMMARY.md (ChannelText test rename, /checkout/success payment_intent defensive guard, async Header test refactor).
+**Last session stop:** 2026-04-18T00:10Z — Plan 05-02 complete; next: `/gsd-execute-phase 05` for Plan 05-03 (wallet top-up caps + Stripe PaymentIntent).
 
 ## Phase Progress
 
@@ -37,7 +37,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 | 2 | Inventory Layer & GDS Integration | Complete |
 | 3 | Core Flight Booking Saga (B2C) | Complete |
 | 4 | B2C Portal (Customer-Facing) | In progress — Wave 2 complete (Plans 00, 01, 02) |
-| 5 | B2B Agent Portal | In progress — Wave 0 complete (Plan 05-00) |
+| 5 | B2B Agent Portal | In progress — Plan 05-02 complete (saga + pricing + portal checkout) |
 | 6 | Backoffice & CRM | Not started |
 | 7 | Hardening & Go-Live | Not started |
 
@@ -58,7 +58,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 |------|------|--------|---------|
 | 05-00 | b2b-agent-portal-scaffold (Wave 0) | Complete | 8b8a376, d5d1f35, 64ff67c |
 | 05-01 | agent-onboarding + Keycloak admin API helper | Complete | 162604c, 2573d7e, 8911572, 67ca061, 7d6e1e9, e3b8a0f |
-| 05-02 | booking-saga B2B branch + pricing/markup + AgencyPriceRequested | Pending (9 red placeholders staged) | — |
+| 05-02 | booking-saga B2B branch + pricing/markup + AgencyPriceRequested | Complete | 74c3aeb, c947af9, 90e9607, e021622, 5720842, 6ed72e5 |
 | 05-03 | wallet top-up caps + Stripe PaymentIntent | Pending (3 red placeholders staged) | — |
 | 05-04 | agency invoice PDF (GROSS only) + IDOR gates | Pending (6 red placeholders staged) | — |
 
@@ -106,6 +106,20 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 - **D-43 Invoice PDF = GROSS only** — new `AgencyInvoiceDocument` QuestPDF generator; no NET/markup/commission rendered.
 - **D-44 UI-SPEC defaults locked** — compact tables, 20/50/100 page-number pager, stricter tone, 2-col dashboard, inline Stripe top-up, dark mode, Radix AlertDialog destructive confirms — all promoted from ASSUMED to LOCKED.
 
+## Decisions Made (Plan 05-02)
+
+- **D-33 claim-sourced AgencyId everywhere** — `AgentBookingsController` stamps `AgencyId` from `User.FindFirst("agency_id")`, never from the request body. `CreateAgentBookingRequest` DTO literally omits the `AgencyId` + `Channel` properties so a tampered JSON body has nothing to be parsed from (T-05-02-01 / T-05-02-08 mitigated at the type level).
+- **D-34 agency-wide booking visibility** — `ListForAgencyAsync(agencyId)` filters by `AgencyId == caller.AgencyId` ONLY; never additionally by `sub`. Comment in controller cites D-34 explicitly. Verified by `AgentBookingsControllerTests.ListForAgencyAsync_returns_only_caller_agency_bookings_ignoring_sub`.
+- **D-35 agent-readonly write gate** — controller short-circuits to 403 when `caller.HasRole("agent-readonly") && !caller.HasRole("agent")`. Policy-level admission allows all three roles (so readonly can still read), but the create action checks the readonly role at the handler boundary. Verified by `Readonly_role_receives_403_on_POST`.
+- **D-36 frozen agency pricing snapshot** — `BookingSagaState.AgencyNetFare/MarkupAmount/GrossAmount/CommissionAmount` stamped ONCE at `AgentBookingDetailsCaptured` (before `PnrCreated`); never re-quoted after ticket issuance. Pricing re-quotes are rejected by the `DuringAny` handler (idempotent per D-40).
+- **D-37 admin-only AgencyMarkupOverride** — controller returns 403 when non-admin attempts to set `AgencyMarkupOverride`. Client-side `CheckoutDetailsForm` hides the fieldset from non-admin as UX polish; the server gate is authoritative.
+- **D-40 idempotency_key = BookingId.ToString()** — `WalletReserveCommand.IdempotencyKey` always equals the saga's BookingId, so retries of the same reserve never double-debit the wallet (T-05-02-04). Enforced in `BookingSaga.PnrCreated` branch.
+- **D-41 commission == markup in v1** — `MarkupRulesEngine.ApplyMarkup` returns `commission = markupAmount`. Future versions can split, but v1 invariant is locked for agent-facing grids and invoice PDFs.
+- **D-44 4-column dual-pricing lock** — NET / Markup / GROSS / Commission in fixed order; `tabular-nums` + `aria-label` on every price cell; Commission is the only green-coloured column; indigo-600 + 1px ring-indigo-200 selection treatment. Locked by 7 vitest facts in `dual-pricing-grid.test.tsx` + grep assertions in the plan's automated block.
+- **Wallet chip polls every 30_000 ms via TanStack Query** — server prehydrates via RSC Header; client polls via `refetchInterval: 30_000, staleTime: 20_000`. Tested by source-file grep (structural guard against future refactor dropping the constant).
+- **Stripe structurally absent from /checkout/confirm** — Pitfall 5 preserved for B2B; the page imports nothing from `@stripe/*`, mounts no `<Elements>`, and the CSP header for the route has no `js.stripe.com` entry. B2B is internal ledger only.
+- **/checkout/success defensive guard against `?payment_intent=`** — Pitfall 6; B2B never mounts Elements so the presence of that parameter signals misrouting or tampering. RSC redirects to `/dashboard?error=unexpected_payment_intent`. The defensive guard mentions the token in source, overriding the plan's `! grep payment_intent` assertion (documented as deviation).
+
 ## Decisions Made (Plan 05-01)
 
 - **Gateway JWT scheme renamed `B2B` → `tbe-b2b`** — Phase 1 shipped the staged scheme as `"B2B"`; Plan 05-01 required `"tbe-b2b"` so the audience-confusion mitigation (Pitfall 4 / T-05-01-01) is grep-verifiable in CI. Policy name `"B2BPolicy"` preserved so `appsettings.json` ReverseProxy routes need no edit. B2C + Backoffice schemes left byte-identical.
@@ -132,9 +146,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 ## Next Action
 
-Run `/gsd-execute-phase 05` to execute Plan 05-02 (booking-saga B2B branch + pricing/markup + AgencyPriceRequested). Plan 05-02 consumes the B2BPolicy + Auth.js session (agency_id + roles) shipped in Plan 05-01, and will migrate `BookingSagaState.Channel` from string → `TBE.Contracts.Enums.Channel` (staged in 05-00 — name collision deferred to 05-02 Task 1). Portal-side 05-02 adds AgencyPriceRequested saga hook + dual NET/GROSS pricing UI and per-booking markup override (agent-admin only).
+Run `/gsd-execute-phase 05` to execute Plan 05-03 (wallet top-up caps + Stripe PaymentIntent). Plan 05-03 consumes the `WalletReserveCommand`/`WalletReserved`/`WalletReserveFailed` contracts shipped in Plan 05-02 and the `B2BAdminPolicy` shipped in 05-01 to gate wallet top-up management. 05-03 will introduce the agency-level wallet Stripe PaymentIntent flow (isolated to `/admin/wallet/*` where the walletCsp allow-list was reserved in Plan 05-00).
 
-**Pre-deploy gate** — before the gateway change from 05-01 (Task 3 `ValidateAudience=true`) is merged to an environment, a human must execute `bash infra/keycloak/verify-audience-smoke-b2b.sh` against that env's Keycloak and get exit 0. Exit 1 (audience mismatch) or exit 2 (env unset) blocks deploy — any B2B token without `aud=tbe-api` will 401 post-deploy. Rollback path: set `ValidateAudience = false` in Program.cs + redeploy.
+**Pre-deploy gates for Plan 05-02:**
+- Apply the two EF Core migrations before deploy: `20260416000000_AddAgencyMarkupRules` (PricingDbContext) and `20260520000000_AddB2BBookingColumns` (BookingDbContext). Seed rules for test agencies ship in the pricing migration.
+- Plan 05-01's `verify-audience-smoke-b2b.sh` gate still applies (unchanged).
 
 After Phase 5, Phase 4 still has plans 04-03 / 04-04 / 04-05 staged (hotel booking, multi-product baskets, mobile E2E) — not blocked by Phase 5 but remaining backlog for the B2C portal.
 

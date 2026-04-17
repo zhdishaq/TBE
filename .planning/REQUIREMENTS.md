@@ -76,10 +76,10 @@
 
 - [x] **B2B-01**: Agency admin can create sub-agent accounts with role-based access (admin, agent, read-only)
 - [x] **B2B-02**: Agent can log in with SSO shared with backoffice (same Keycloak realm)
-- [ ] **B2B-03**: Agent sees dual pricing: net fare + agency markup + gross selling price simultaneously
-- [ ] **B2B-04**: Agent sees commission amount per booking before confirming
-- [ ] **B2B-05**: Agent can book on behalf of a customer (passenger details entered by agent, not customer)
-- [ ] **B2B-06**: Credit wallet balance displayed in agent header; booking is blocked if wallet balance insufficient
+- [x] **B2B-03**: Agent sees dual pricing: net fare + agency markup + gross selling price simultaneously
+- [x] **B2B-04**: Agent sees commission amount per booking before confirming
+- [x] **B2B-05**: Agent can book on behalf of a customer (passenger details entered by agent, not customer)
+- [x] **B2B-06**: Credit wallet balance displayed in agent header; booking is blocked if wallet balance insufficient
 - [ ] **B2B-07**: Wallet deduction is atomic: funds reserved at booking initiation, committed on confirmation, released on failure (no double-spend)
 - [ ] **B2B-08**: Agent dashboard: bookings made, wallet balance, ticketing deadline alerts for pending PNRs
 - [ ] **B2B-09**: Ticketing deadline alerts shown for all PNRs approaching TTL (>24h warning, >2h urgent warning)
