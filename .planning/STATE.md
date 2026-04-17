@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 04
-last_updated: "2026-04-16T20:33:33.280Z"
+status: Discussing Phase 05
+last_updated: "2026-04-17T13:25:00.000Z"
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 17
-  completed_plans: 20
+  completed_plans: 21
   percent: 100
 ---
 
@@ -20,14 +20,14 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** A unified booking platform where both direct customers and travel agents can search real inventory, complete bookings end-to-end, and have those bookings managed through a single backoffice — without switching systems.
 
-**Current focus:** Phase 04 — b2c-portal-customer-facing
+**Current focus:** Phase 05 — b2b-agent-portal (discussing)
 
 ## Current Status
 
 **Milestone:** v1.0 — Full Platform
-**Phase:** 04 — B2C Portal (Customer-Facing) — Wave 2 (Plans 04-00, 04-01, 04-02) complete
-**Last action:** Phase 04 Plan 02 executed (flight product end-to-end). InventoryService seeded 7,698 OpenFlights airports into Redis via `IataAirportSeeder` BackgroundService + `GET /airports` public rate-limited typeahead. b2c-web shipped nuqs+TanStack Query search surfaces (14 URL params, client-side filter/sort with zero refetch per D-12), the Stripe PaymentElement checkout flow (details → payment → processing poll → success), memoised `loadStripe` (Pitfall 5), email-verify gate at `/checkout/payment` (D-06, Pitfall 7), and 2000ms/90s poll-driven success (Pitfall 6 / D-12). Commits: 90ced55, 9f2ca48, 2bb74cc, 125dd93, 2438b2d.
-**Last session stop:** 2026-04-16T16:55Z — Completed 04-02-PLAN.md (Wave 2 — flight product end-to-end).
+**Phase:** 05 — B2B Agent Portal — context gathered (CONTEXT.md committed, decisions D-32..D-44)
+**Last action:** Phase 05 discuss-phase session completed across 4 gray areas (Realm & multi-agency, Markup schema, Refund/top-up, UI deltas). 13 decisions locked in `05-CONTEXT.md`; full Q&A audit trail in `05-DISCUSSION-LOG.md`. Notable: D-34 deliberately overrides ROADMAP Phase 5 UAT wording — agent booking visibility is **agency-wide for all agent roles**, filter by `agency_id` only (never by `sub`). Commit: 57d1ed4.
+**Last session stop:** 2026-04-17T13:25Z — Phase 5 context gathered; next: `/gsd-plan-phase 5`.
 
 ## Phase Progress
 
@@ -37,7 +37,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 | 2 | Inventory Layer & GDS Integration | Complete |
 | 3 | Core Flight Booking Saga (B2C) | Complete |
 | 4 | B2C Portal (Customer-Facing) | In progress — Wave 2 complete (Plans 00, 01, 02) |
-| 5 | B2B Agent Portal | Not started |
+| 5 | B2B Agent Portal | Context gathered — ready for `/gsd-plan-phase 5` |
 | 6 | Backoffice & CRM | Not started |
 | 7 | Hardening & Go-Live | Not started |
 
@@ -80,9 +80,27 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 - **TanStack Query key excludes filters** — `['flights', from, to, dep, ret, adt, chd, infl, infs, cabin]` only; filter/sort changes never refetch (D-12 / Pitfall 11); filtered view is computed via `useMemo` over cached offers. `staleTime=90_000` matches Phase 2 Redis selection-phase TTL.
 - **B2C-05 mobile 5-step budget** — stepper fixed at Search / Results / Select / Details / Payment; processing + success explicitly excluded from the step count; Playwright mobile spec uses `framenavigated` listener to count unique in-app paths with processing/success filtered out, asserts `toBeLessThanOrEqual(5)`.
 
+## Decisions Made (Phase 05 discuss)
+
+- **D-32 SSO model** — Shared browser session only; no OIDC brokering or unified realm between `tbe-b2b` and `tbe-backoffice`.
+- **D-33 One user = one agency** — single-valued `agency_id` claim; multi-agency OTA-groups deferred.
+- **D-34 Agency-wide booking visibility for all agent roles (agent, agent-admin, agent-readonly)** — deliberate override of ROADMAP Phase 5 UAT "sub-agent sees only their own bookings"; filter by `agency_id` only, never additionally by `sub`. Planner must cite D-34 in a comment at the controller boundary.
+- **D-35 `agent-readonly` = agency oversight** — read-only agency-wide view for finance/compliance; no mutations.
+- **D-36 Markup schema** — `pricing.AgencyMarkupRules (AgencyId, FlatAmount, PercentOfNet, RouteClass NULL, IsActive)`; max 2 rows per agency (base + optional RouteClass override); evaluation is `override ?? base`.
+- **D-37 Per-booking markup override** — agent-admin only; `BookingSagaState.AgencyMarkupOverride decimal(18,4) NULL`; enforced via `B2BAdminPolicy`.
+- **D-38 Markup CRUD out of Phase 5** — seed via EF migration/SQL; backoffice UI ships in Phase 6.
+- **D-39 Post-ticket refund manual in Phase 6** — Phase 5 saga only releases pre-ticket reservations; post-ticket cancel returns `409 Conflict`.
+- **D-40 Top-up caps via env config** — `Wallet__TopUp__MinAmount` / `Wallet__TopUp__MaxAmount` (default £10 / £50,000); enforced in `WalletController` BEFORE creating a Stripe PaymentIntent.
+- **D-41 Commission settlement out of Phase 5** — displayed only; payout pipeline deferred to Phase 6.
+- **D-42 Portal differentiation** — indigo-600 primary accent (WCAG AA vs slate-50) + outline "AGENT PORTAL" wordmark badge; starterKit `.jsx` untouched (Pitfall 17).
+- **D-43 Invoice PDF = GROSS only** — new `AgencyInvoiceDocument` QuestPDF generator; no NET/markup/commission rendered.
+- **D-44 UI-SPEC defaults locked** — compact tables, 20/50/100 page-number pager, stricter tone, 2-col dashboard, inline Stripe top-up, dark mode, Radix AlertDialog destructive confirms — all promoted from ASSUMED to LOCKED.
+
 ## Next Action
 
-Run `/gsd-execute-plan 04-03` to implement the hotel search + booking UI + HotelBookingSagaState + NotificationService voucher consumer (HOTB-01..05, NOTF-02 primary). Red placeholders from 04-00 are staged.
+Run `/gsd-plan-phase 5` to produce phase plans for the B2B Agent Portal. Researcher output (`05-RESEARCH.md`) and UI contract (`05-UI-SPEC.md`) are in place; CONTEXT.md decisions D-32..D-44 are the authoritative constraints.
+
+After Phase 5 planning, Phase 4 still has plans 04-03 / 04-04 / 04-05 staged (hotel booking, multi-product baskets, mobile E2E) — not blocked by Phase 5 but remaining backlog for the B2C portal.
 
 ## Open Human Actions
 
