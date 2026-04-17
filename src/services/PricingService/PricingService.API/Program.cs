@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
+using TBE.PricingService.Application.Agency;
 using TBE.PricingService.Application.Rules;
 using TBE.PricingService.Infrastructure;
+using TBE.PricingService.Infrastructure.Agency;
 using TBE.PricingService.Infrastructure.Rules;
 using TBE.Common.Messaging;
 using TBE.Common.Security;
@@ -32,6 +34,10 @@ try
 
     builder.Services.AddTbeMassTransitWithRabbitMq(
         builder.Configuration,
+        // Plan 05-02 Task 1: register AgencyPriceRequestedConsumer via the
+        // Application-layer extension (keeps consumer wiring adjacent to the
+        // consumer type rather than scattered across Program.cs).
+        configureConsumers: cfg => cfg.AddAgencyPricingConsumers(),
         configureOutbox: x =>
         {
             x.AddEntityFrameworkOutbox<PricingDbContext>(o =>
@@ -44,6 +50,8 @@ try
         });
 
     builder.Services.AddScoped<IPricingRulesEngine, MarkupRulesEngine>();
+    // Plan 05-02 Task 1: D-36 per-agency markup resolver.
+    builder.Services.AddScoped<IAgencyMarkupRulesEngine, AgencyMarkupRulesEngine>();
 
     // Keycloak JWT + FallbackPolicy (COMP-05).
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

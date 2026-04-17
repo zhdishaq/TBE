@@ -92,6 +92,25 @@ namespace TBE.PricingService.Infrastructure.Migrations
                 b.HasIndex("ProductType", "Channel", "IsActive").HasDatabaseName("IX_MarkupRules_ProductType_Channel_IsActive");
                 b.ToTable("MarkupRules");
             });
+
+            // Plan 05-02 Task 1 — D-36 per-agency markup rules.
+            modelBuilder.Entity("TBE.PricingService.Application.Agency.AgencyMarkupRule", b =>
+            {
+                b.Property<Guid>("Id").HasColumnType("uniqueidentifier");
+                b.Property<Guid>("AgencyId").HasColumnType("uniqueidentifier");
+                b.Property<string?>("RouteClass").HasMaxLength(32).HasColumnType("nvarchar(32)");
+                b.Property<decimal>("FlatAmount").HasColumnType("decimal(18,4)");
+                b.Property<decimal>("PercentOfNet").HasColumnType("decimal(5,4)");
+                b.Property<bool>("IsActive").HasColumnType("bit");
+                b.Property<DateTime>("CreatedAt").HasColumnType("datetime2");
+                b.Property<DateTime>("UpdatedAt").HasColumnType("datetime2");
+                b.HasKey("Id");
+                b.HasIndex("AgencyId", "RouteClass")
+                    .IsUnique()
+                    .HasDatabaseName("IX_AgencyMarkupRules_Active")
+                    .HasFilter("[IsActive] = 1");
+                b.ToTable("AgencyMarkupRules", "pricing");
+            });
 #pragma warning restore 612, 618
         }
     }
