@@ -1,17 +1,15 @@
 // Phase 5 Plan 05-00 — B2B Agent Portal root layout.
+// Phase 5 Plan 05-01 deltas:
+//   - The Wave 0 placeholder header (brand + badge only) was REMOVED.
+//     The full authenticated Header (brand + badge + role-aware nav +
+//     wallet chip + user menu) now lives in `app/(portal)/layout.tsx`
+//     so unauthenticated routes (/login, the NextAuth error page)
+//     render chrome-free per UI-SPEC §1 (single centred 384px card).
+//   - `QueryProvider` wraps the app so admin-surface mutations
+//     (`useMutation`, `useQueryClient`) work inside the Create /
+//     Deactivate sub-agent dialogs.
 //
-// Source: fork of src/portals/b2c-web/app/layout.tsx + 05-PATTERNS.md §19 +
-// 05-00-PLAN action step 13.
-//
-// Deltas vs b2c-web:
-//   - `storageKey="tbe-b2b-theme"` — separate theme preference from the
-//     b2c portal when both are served from the same apex domain.
-//   - `<AgentPortalBadge />` rendered in the placeholder header so the
-//     D-42 differentiation is visible on every page in Wave 0. The full
-//     header component (with nav + wallet chip) ships in Plan 01.
-//
-// Wave 0 deliberately does NOT fetch the wallet balance here — wallet chip
-// is Plan 05-01 per 05-UI-SPEC §Reuse vs New Ledger.
+// Source: fork of src/portals/b2c-web/app/layout.tsx + 05-PATTERNS.md §19.
 
 import { Suspense, type ReactNode } from 'react';
 import { Inter } from 'next/font/google';
@@ -19,7 +17,7 @@ import { ThemeProvider } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { AgentPortalBadge } from '@/components/layout/agent-portal-badge';
+import { QueryProvider } from '@/components/providers/query-provider';
 import '@/styles/globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -52,17 +50,12 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           disableTransitionOnChange
           enableColorScheme
         >
-          <TooltipProvider delayDuration={0}>
-            {/* Wave 0 placeholder header — full header (nav + wallet chip)
-                ships in Plan 05-01. The AgentPortalBadge MUST stay visible
-                on every authenticated route per D-42. */}
-            <header className="flex h-14 items-center justify-between border-b border-border px-6">
-              <span className="text-sm font-semibold">TBE</span>
-              <AgentPortalBadge />
-            </header>
-            <Suspense>{children}</Suspense>
-            <Toaster />
-          </TooltipProvider>
+          <QueryProvider>
+            <TooltipProvider delayDuration={0}>
+              <Suspense>{children}</Suspense>
+              <Toaster />
+            </TooltipProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

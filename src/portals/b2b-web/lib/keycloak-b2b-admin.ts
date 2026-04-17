@@ -10,10 +10,28 @@
 // Phase 5 Plan 05-00 Wave 0 surface:
 //   - `getServiceAccountToken()` — fork of b2c-web/lib/keycloak-admin.ts
 //   - `adminApiBase()` — fork of b2c-web/lib/keycloak-admin.ts
-//   - NO sub-agent creation helper yet — Plan 05-01 Task 2 adds it. Keeping
-//     the Wave 0 surface minimal lets Plan 01 add the B2B-10 create flow
-//     without drift. (05-00-PLAN acceptance criterion asserts the sub-agent
-//     helper export is absent in this Wave.)
+//
+// Phase 5 Plan 05-01 Task 2 additions (B2B-01 sub-agent CRUD):
+//   - `createSubAgent({ agencyId, email, firstName, lastName, role })`
+//     Creates a Keycloak user under the caller's agency with a role from
+//     `'agent' | 'agent-readonly'` (T-05-01-06 — agent-admin is literally
+//     unassignable through this helper), emailVerified=false, and the
+//     D-33 single-valued `agency_id` attribute populated. Throws
+//     `DuplicateUserError` on 409.
+//   - `deactivateUser({ callerAgencyId, userId })`
+//     Reads the target user, asserts target.attributes.agency_id[0]
+//     matches the caller (T-05-01-05 cross-tenant guard — throws
+//     `CrossTenantError` otherwise), then PUTs `enabled=false`.
+//   - `reactivateUser({ callerAgencyId, userId })` — mirror of
+//     deactivateUser with `enabled=true`.
+//   - `listAgencyUsers({ agencyId })` — returns every Keycloak user
+//     scoped to the agency plus their realm roles.
+//
+// Pitfall 28 (Phase 5 planning language — "server-side agency_id
+// injection"): these helpers deliberately take `agencyId` / `callerAgencyId`
+// as explicit parameters. Every caller in the route handler layer reads
+// agency_id from the session and NEVER from the request body — the
+// tampering test (T-05-01-03) runs in tests/route-agents.test.ts.
 //
 // SECURITY (mitigation T-05-00-02):
 //   - This module must NEVER be imported from a `"use client"` file.
@@ -91,6 +109,306 @@ export async function getServiceAccountToken(): Promise<string> {
     expiresAtMs: now + expiresInSec * 1000,
   };
   return payload.access_token;
+}
+
+/**
+ * Shape returned by `listAgencyUsers` — a projection of Keycloak's user
+ * representation plus resolved realm role names. Used by the RSC
+ * `/admin/agents` page and the GET /api/agents handler.
+ */
+export interface AgencyUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  roles: string[];
+  enabled: boolean;
+  /** Keycloak `createdTimestamp` — ms epoch. */
+  createdTimestamp: number;
+}
+
+/**
+ * Raised when the Keycloak admin `POST /users` endpoint returns 409
+ * (duplicate email/username). The /api/agents route handler translates
+ * this into HTTP 409 for the Create dialog's inline form error.
+ */
+export class DuplicateUserError extends Error {
+  constructor() {
+    super('duplicate_user');
+    this.name = 'DuplicateUserError';
+  }
+}
+
+/**
+ * Raised by `deactivateUser` / `reactivateUser` when the target user's
+ * agency_id attribute does not match the caller's session agency_id
+ * (T-05-01-05). The route handler catches this, logs a structured warn
+ * line, and returns HTTP 403.
+ */
+export class CrossTenantError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CrossTenantError';
+  }
+}
+
+/**
+ * Create a Keycloak user under the caller's agency, assign the selected
+ * realm role, and trigger the initial verify-email action. Returns on
+ * success; throws `DuplicateUserError` on 409. Every other non-2xx
+ * raises a sanitised `Error` that does NOT echo the Keycloak response
+ * body (T-05-01-04 — Keycloak error payloads sometimes reflect the
+ * request back and we refuse to leak user input into the server log).
+ *
+ * `role` is typed `'agent' | 'agent-readonly'` — agent-admin is
+ * literally unassignable through this helper (T-05-01-06). The zod
+ * schema on the route handler is the first line of defence; this type
+ * is the second.
+ *
+ * Pitfall 28: `agencyId` is always the caller's session agency_id.
+ * The route handler must NEVER forward a body-supplied value.
+ */
+export async function createSubAgent(params: {
+  agencyId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'agent' | 'agent-readonly';
+}): Promise<void> {
+  const token = await getServiceAccountToken();
+  const base = adminApiBase();
+  // Step 1 — create the user with the D-33 single-valued agency_id
+  // attribute. `enabled=true` so they can log in, `emailVerified=false`
+  // so Keycloak's required action gates login until the verify-email
+  // link (Step 3) has been clicked.
+  const createResponse = await fetch(`${base}/users`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      username: params.email,
+      email: params.email,
+      firstName: params.firstName,
+      lastName: params.lastName,
+      enabled: true,
+      emailVerified: false,
+      attributes: { agency_id: [params.agencyId] },
+    }),
+    cache: 'no-store',
+  });
+  if (createResponse.status === 409) {
+    throw new DuplicateUserError();
+  }
+  if (!createResponse.ok) {
+    throw new Error(
+      `createSubAgent(create) returned ${createResponse.status}`,
+    );
+  }
+  // Keycloak returns 201 + `Location: /admin/realms/<realm>/users/<uuid>`
+  // on successful create. Parse the new user id off the header (there
+  // is no body — extracting from Location is the documented approach).
+  const location = createResponse.headers.get('location');
+  const userId = location?.split('/').pop();
+  if (!userId) {
+    throw new Error('createSubAgent: missing Location header on create');
+  }
+  // Step 2 — resolve the realm role representation so we can POST it
+  // into the user's realm role-mappings. Keycloak's admin API requires
+  // the full role representation (id + name + description), not just
+  // the name.
+  const roleLookup = await fetch(`${base}/roles/${params.role}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  if (!roleLookup.ok) {
+    throw new Error(
+      `createSubAgent(role-lookup) returned ${roleLookup.status}`,
+    );
+  }
+  const roleRep = (await roleLookup.json()) as unknown;
+  const assignResponse = await fetch(
+    `${base}/users/${userId}/role-mappings/realm`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([roleRep]),
+      cache: 'no-store',
+    },
+  );
+  if (!assignResponse.ok) {
+    throw new Error(
+      `createSubAgent(role-assign) returned ${assignResponse.status}`,
+    );
+  }
+  // Step 3 — trigger the verify-email action (Keycloak handles
+  // idempotency + rate-limiting for us; a failure here is logged but
+  // not surfaced since the user was successfully created above and the
+  // admin can resend from the UI later).
+  const verifyResp = await fetch(
+    `${base}/users/${userId}/send-verify-email`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    },
+  );
+  if (!verifyResp.ok) {
+    // Fire-and-forget — log a sanitised line but do NOT throw. The
+    // user record exists; the admin can re-trigger the email later.
+    // eslint-disable-next-line no-console
+    console.warn(
+      `createSubAgent(send-verify-email) returned ${verifyResp.status}`,
+    );
+  }
+}
+
+/**
+ * Flip `enabled=false` on a target Keycloak user after verifying their
+ * `agency_id` attribute matches the caller's session agency_id
+ * (T-05-01-05 cross-tenant guard). Throws `CrossTenantError` when the
+ * guard fails so the route handler can log a structured warn line
+ * without the helper having to know about HTTP status codes.
+ */
+export async function deactivateUser(params: {
+  callerAgencyId: string;
+  userId: string;
+}): Promise<void> {
+  await setUserEnabled({ ...params, enabled: false });
+}
+
+/**
+ * Flip `enabled=true` on a target Keycloak user with the same
+ * cross-tenant guard as `deactivateUser`. Exposed for the reactivate
+ * row action on the sub-agent list.
+ */
+export async function reactivateUser(params: {
+  callerAgencyId: string;
+  userId: string;
+}): Promise<void> {
+  await setUserEnabled({ ...params, enabled: true });
+}
+
+/**
+ * Return every Keycloak user whose `agency_id` attribute equals
+ * `params.agencyId`, plus their realm role names. Used by the GET
+ * /api/agents handler and the RSC /admin/agents page (initial data).
+ *
+ * Pagination is capped at 200 — that's well above the expected upper
+ * bound for a single agency (Phase 5 is built around agencies with
+ * 5–50 sub-agents, not enterprise scale). If we ever need paging, we
+ * extend here and introduce cursor params on the route handler.
+ */
+export async function listAgencyUsers(params: {
+  agencyId: string;
+}): Promise<AgencyUser[]> {
+  const token = await getServiceAccountToken();
+  const base = adminApiBase();
+  // Keycloak admin `GET /users` supports `q=<key>:<value>` for
+  // attribute searches. This hits the `agency_id` attribute we set at
+  // create-time; `max=200` caps pagination.
+  const resp = await fetch(
+    `${base}/users?q=agency_id:${encodeURIComponent(params.agencyId)}&max=200`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    },
+  );
+  if (!resp.ok) {
+    throw new Error(`listAgencyUsers returned ${resp.status}`);
+  }
+  const users = (await resp.json()) as Array<{
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    enabled: boolean;
+    createdTimestamp: number;
+  }>;
+  // Fan out one role-lookup per user. For < 200 users on a warm
+  // service-account token this is fast enough; we revisit if the
+  // number ever matters.
+  return Promise.all(
+    users.map(async (u) => {
+      const rolesResp = await fetch(
+        `${base}/users/${u.id}/role-mappings/realm`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        },
+      );
+      const roles = rolesResp.ok
+        ? ((await rolesResp.json()) as Array<{ name?: string }>)
+            .map((r) => r.name)
+            .filter((n): n is string => typeof n === 'string')
+        : [];
+      return {
+        id: u.id,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        roles,
+        enabled: u.enabled,
+        createdTimestamp: u.createdTimestamp,
+      };
+    }),
+  );
+}
+
+/**
+ * Shared enable/disable path for `deactivateUser` / `reactivateUser`.
+ * Reads the target user first, asserts cross-tenant match, then PUTs
+ * the full representation back with the new `enabled` flag. Using the
+ * full representation avoids clobbering attributes a partial PUT might
+ * otherwise drop.
+ */
+async function setUserEnabled(params: {
+  callerAgencyId: string;
+  userId: string;
+  enabled: boolean;
+}): Promise<void> {
+  const token = await getServiceAccountToken();
+  const base = adminApiBase();
+  const userResp = await fetch(`${base}/users/${params.userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  if (userResp.status === 404) {
+    throw new Error('setUserEnabled: target not found');
+  }
+  if (!userResp.ok) {
+    throw new Error(`setUserEnabled(lookup) returned ${userResp.status}`);
+  }
+  const user = (await userResp.json()) as {
+    id: string;
+    attributes?: { agency_id?: string[] };
+    [key: string]: unknown;
+  };
+  // T-05-01-05 — every write path asserts target.agency_id matches
+  // the caller session. `targetAgency !== params.callerAgencyId` is
+  // the grep-verifiable form from the plan acceptance criteria.
+  const targetAgency = user.attributes?.agency_id?.[0];
+  if (targetAgency !== params.callerAgencyId) {
+    throw new CrossTenantError(
+      `cross-tenant deactivation blocked caller=${params.callerAgencyId} target_owner=${targetAgency ?? 'unknown'} user=${params.userId}`,
+    );
+  }
+  const updateResp = await fetch(`${base}/users/${params.userId}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ...user, enabled: params.enabled }),
+    cache: 'no-store',
+  });
+  if (!updateResp.ok) {
+    throw new Error(`setUserEnabled(put) returned ${updateResp.status}`);
+  }
 }
 
 /**
