@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 05
-last_updated: "2026-04-17T14:52:22.464Z"
+last_updated: "2026-04-17T15:54:44.472Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 22
-  completed_plans: 22
+  completed_plans: 23
   percent: 100
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 ## Current Status
 
 **Milestone:** v1.0 — Full Platform
-**Phase:** 05 — B2B Agent Portal — Wave 0 complete (scaffold + red placeholders + Keycloak delta)
-**Last action:** Plan 05-00 executed atomically. Three commits: `8b8a376` (b2b-web scaffold fork, 112 files, 77 UI components byte-for-byte identical to b2c-web), `d5d1f35` (Keycloak tbe-b2b realm delta + verify-audience-smoke-b2b.sh + TBE.Contracts.Enums.Channel), `64ff67c` (Vitest/Playwright harness + 22 red-placeholder xUnit tests + 28-row VALIDATION map). Baseline CI green via `Category!=RedPlaceholder`: 26 + 13 + 12 = 51 passing (Pricing.Tests is a new project with only red placeholders). `wave_0_complete=true`, `nyquist_compliant=true` in 05-VALIDATION.md.
-**Last session stop:** 2026-04-17T14:20Z — Plan 05-00 complete; next: `/gsd-execute-phase 05` for Plan 05-01 (agent onboarding + Keycloak admin API helper).
+**Phase:** 05 — B2B Agent Portal — Plan 05-01 complete (agent onboarding + gateway B2B audience flip)
+**Last action:** Plan 05-01 executed atomically as 3 TDD tasks (6 commits — RED/GREEN each). `162604c` + `2573d7e` (Task 1 Auth.js session + authenticated header with role-conditional Admin nav), `8911572` + `67ca061` (Task 2 sub-agent CRUD via Keycloak Admin API with Pitfall 28 server-side agency_id injection + Radix Dialog create + Radix AlertDialog deactivate + TanStack Query list), `7d6e1e9` + `e3b8a0f` (Task 3 gateway scheme renamed `B2B` → `tbe-b2b` with `ValidateAudience=true` / `Audience="tbe-api"` + OnTokenValidated `realm_access.roles` projection + `B2BPolicy`/`B2BAdminPolicy` with `AddAuthenticationSchemes("tbe-b2b")` pin + new YARP routes for `/api/b2b/wallet` and `/api/b2b/invoices` + Gateway.Tests integration suite 8/8 passing). B2B-01 + B2B-02 marked complete in REQUIREMENTS.md. 4 auto-fixed deviations documented in 05-01-SUMMARY.md (scheme rename, NuGet vulnerability bump, realm_access projection, TestServer vs WebApplicationFactory).
+**Last session stop:** 2026-04-17T15:30Z — Plan 05-01 complete; next: `/gsd-execute-phase 05` for Plan 05-02 (booking-saga B2B branch + pricing/markup + AgencyPriceRequested).
 
 ## Phase Progress
 
@@ -57,7 +57,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 | Plan | Name | Status | Commits |
 |------|------|--------|---------|
 | 05-00 | b2b-agent-portal-scaffold (Wave 0) | Complete | 8b8a376, d5d1f35, 64ff67c |
-| 05-01 | agent-onboarding + Keycloak admin API helper | Pending (4 red placeholders staged) | — |
+| 05-01 | agent-onboarding + Keycloak admin API helper | Complete | 162604c, 2573d7e, 8911572, 67ca061, 7d6e1e9, e3b8a0f |
 | 05-02 | booking-saga B2B branch + pricing/markup + AgencyPriceRequested | Pending (9 red placeholders staged) | — |
 | 05-03 | wallet top-up caps + Stripe PaymentIntent | Pending (3 red placeholders staged) | — |
 | 05-04 | agency invoice PDF (GROSS only) + IDOR gates | Pending (6 red placeholders staged) | — |
@@ -106,6 +106,19 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 - **D-43 Invoice PDF = GROSS only** — new `AgencyInvoiceDocument` QuestPDF generator; no NET/markup/commission rendered.
 - **D-44 UI-SPEC defaults locked** — compact tables, 20/50/100 page-number pager, stricter tone, 2-col dashboard, inline Stripe top-up, dark mode, Radix AlertDialog destructive confirms — all promoted from ASSUMED to LOCKED.
 
+## Decisions Made (Plan 05-01)
+
+- **Gateway JWT scheme renamed `B2B` → `tbe-b2b`** — Phase 1 shipped the staged scheme as `"B2B"`; Plan 05-01 required `"tbe-b2b"` so the audience-confusion mitigation (Pitfall 4 / T-05-01-01) is grep-verifiable in CI. Policy name `"B2BPolicy"` preserved so `appsettings.json` ReverseProxy routes need no edit. B2C + Backoffice schemes left byte-identical.
+- **`ValidateAudience=true` + `Audience="tbe-api"` on tbe-b2b scheme** — flipped from staged `false`. Irreversible in effect: any token without `aud=tbe-api` 401s. Pre-deploy gate = `bash infra/keycloak/verify-audience-smoke-b2b.sh` exit 0.
+- **OnTokenValidated projects `realm_access.roles` → flat `roles` claims** — Keycloak emits realm roles under a JSON envelope; without projection, `B2BPolicy`'s `HasClaim("roles", ...)` assertion never matches and every authenticated agent gets 403 (silent deny-all). Projection done once in Program.cs so downstream services need no envelope parser.
+- **`AddAuthenticationSchemes("tbe-b2b")` pin on B2BPolicy + B2BAdminPolicy** — prevents a B2C token (audience mismatch detected upstream, but belt-and-braces) from ever satisfying a B2B policy even if routed to `/api/b2b/*`.
+- **Server-side agency_id injection everywhere (Pitfall 28)** — `POST /api/agents` zod schema has no `agency_id` field; unknown keys rejected; route handler passes `session.user.agency_id` to `createSubAgent`. Pattern locked for every subsequent B2B route handler (05-02 bookings, 05-03 wallet, 05-04 invoices).
+- **Role creation constrained to {agent, agent-readonly} in v1 (T-05-01-06)** — `POST /api/agents` zod enum excludes `agent-admin`; create-sub-agent-dialog.tsx radio group matches schema; literal `"agent-admin"` absent from the create dialog source.
+- **IDOR guard via typed CrossTenantError** — `setUserEnabled` asserts target user's `agency_id` attribute equals caller's session agency_id; route handlers catch `CrossTenantError` → 403 + `console.warn` audit signal (T-05-01-05).
+- **Route handler `export const runtime = 'nodejs'`** — `lib/keycloak-b2b-admin.ts` throws on browser import; `KEYCLOAK_B2B_ADMIN_CLIENT_SECRET` never touches the Edge runtime (T-05-01-04). Service-account token cached in-process with 30s expiry skew (mirror of 04-01 pattern).
+- **Gateway.Tests via HostBuilder + TestServer (not WebApplicationFactory<Program>)** — real Program.cs boots YARP pointing at downstream container addresses that don't exist in-test; happy-path Facts would 502. TestServer mirrors production JwtBearer + policy config exactly with minimal endpoints (`/api/b2b/bookings/me` under B2BPolicy, `/api/b2b/admin/ping` under B2BAdminPolicy) so asserts land on the auth gate only. 8/8 Facts cover no-token → 401, wrong-issuer → 401, wrong-audience → 401, per-role × per-policy matrix.
+- **Session shape D-33 locked in TypeScript** — `Session.roles: string[]` top-level, `Session.user.agency_id?: string` on user; JWT interface mirrors. Declared in `types/auth.d.ts`; populated in Auth.js `jwt()` + `session()` callbacks from Keycloak claims.
+
 ## Decisions Made (Plan 05-00)
 
 - **Portal scaffolding = full fork of b2c-web** — no shared runtime package yet; keeps Phase 05 blast radius contained. Shared UI lives in byte-identical `components/ui/` (77 files, `diff -r` exit 0 — Pitfall 17).
@@ -119,13 +132,15 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 ## Next Action
 
-Run `/gsd-execute-phase 05` to execute Plan 05-01 (agent onboarding + Keycloak admin API `createSubAgent` helper). Plan 05-01 expects tbe-b2b realm to be importable (file exists at `infra/keycloak/realm-tbe-b2b.json`) and red placeholders for `AgentBookingsController` to be in place — both satisfied by Wave 0.
+Run `/gsd-execute-phase 05` to execute Plan 05-02 (booking-saga B2B branch + pricing/markup + AgencyPriceRequested). Plan 05-02 consumes the B2BPolicy + Auth.js session (agency_id + roles) shipped in Plan 05-01, and will migrate `BookingSagaState.Channel` from string → `TBE.Contracts.Enums.Channel` (staged in 05-00 — name collision deferred to 05-02 Task 1). Portal-side 05-02 adds AgencyPriceRequested saga hook + dual NET/GROSS pricing UI and per-booking markup override (agent-admin only).
+
+**Pre-deploy gate** — before the gateway change from 05-01 (Task 3 `ValidateAudience=true`) is merged to an environment, a human must execute `bash infra/keycloak/verify-audience-smoke-b2b.sh` against that env's Keycloak and get exit 0. Exit 1 (audience mismatch) or exit 2 (env unset) blocks deploy — any B2B token without `aud=tbe-api` will 401 post-deploy. Rollback path: set `ValidateAudience = false` in Program.cs + redeploy.
 
 After Phase 5, Phase 4 still has plans 04-03 / 04-04 / 04-05 staged (hotel booking, multi-product baskets, mobile E2E) — not blocked by Phase 5 but remaining backlog for the B2C portal.
 
 ## Open Human Actions
 
-- **Plan 05-01 (next)** — Import `infra/keycloak/realm-tbe-b2b.json` into local Keycloak (Realms → Add realm → Import). Populate `KEYCLOAK_B2B_ISSUER`, `KEYCLOAK_B2B_CLIENT_ID`, `KEYCLOAK_B2B_CLIENT_SECRET`, `KEYCLOAK_B2B_ADMIN_CLIENT_ID`, `KEYCLOAK_B2B_ADMIN_CLIENT_SECRET` in `src/portals/b2b-web/.env.local`. Then run `bash infra/keycloak/verify-audience-smoke-b2b.sh` (expect exit 0); populate `agency_id` user attribute on a test agent user.
+- **Plan 05-01 pre-deploy gate (blocks gateway rollout)** — Import `infra/keycloak/realm-tbe-b2b.json` into the target-env Keycloak (Realms → Add realm → Import). Populate `KEYCLOAK_B2B_ISSUER`, `KEYCLOAK_B2B_CLIENT_ID`, `KEYCLOAK_B2B_CLIENT_SECRET`, `KEYCLOAK_B2B_ADMIN_CLIENT_ID`, `KEYCLOAK_B2B_ADMIN_CLIENT_SECRET` in `src/portals/b2b-web/.env.local` (and the deployment env). Create a test `agent-admin` user with `agency_id` user attribute populated (GUID). Run `bash infra/keycloak/verify-audience-smoke-b2b.sh` from repo root — MUST exit 0 before the gateway `ValidateAudience=true` change ships to that env. Rollback: set `ValidateAudience = false` in Program.cs + redeploy.
 - **Plan 05-03 prerequisite** — Populate `Wallet__TopUp__MinAmount` / `Wallet__TopUp__MaxAmount` env vars for PaymentService (defaults apply if unset: £10 / £50,000).
 - Provision Keycloak `tbe-b2c-admin` service client and populate `KEYCLOAK_B2C_ADMIN_CLIENT_ID` / `KEYCLOAK_B2C_ADMIN_CLIENT_SECRET`. Until then `verify-audience-smoke.sh` exits with code 2 (env var unset) — **blocks 04-02/04-03 verification, not 04-01 execution**.
 - Populate `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` in `.env.test` before running Plan 04-02 e2e specs.

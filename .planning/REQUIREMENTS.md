@@ -74,8 +74,8 @@
 
 ### B2B Agent Portal (B2B)
 
-- [ ] **B2B-01**: Agency admin can create sub-agent accounts with role-based access (admin, agent, read-only)
-- [ ] **B2B-02**: Agent can log in with SSO shared with backoffice (same Keycloak realm)
+- [x] **B2B-01**: Agency admin can create sub-agent accounts with role-based access (admin, agent, read-only)
+- [x] **B2B-02**: Agent can log in with SSO shared with backoffice (same Keycloak realm)
 - [ ] **B2B-03**: Agent sees dual pricing: net fare + agency markup + gross selling price simultaneously
 - [ ] **B2B-04**: Agent sees commission amount per booking before confirming
 - [ ] **B2B-05**: Agent can book on behalf of a customer (passenger details entered by agent, not customer)
@@ -193,7 +193,8 @@
 | HOTB-01 to HOTB-05 | Phase 5 | Pending |
 | CARB-01 to CARB-03 | Phase 5 | Pending |
 | PKG-01 to PKG-04 | Phase 5 | Pending |
-| B2B-01 to B2B-10 | Phase 6 | Pending |
+| B2B-01, B2B-02 | Phase 5 | Complete (Plan 05-01) |
+| B2B-03 to B2B-10 | Phase 5 | Pending |
 | BO-01 to BO-10 | Phase 7 | Pending |
 | CRM-01 to CRM-05 | Phase 7 | Pending |
 
