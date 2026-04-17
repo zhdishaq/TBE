@@ -134,3 +134,50 @@ declare module '@/components/ui/badge' {
   export const Badge: ComponentType<AnyProps>;
   export const badgeVariants: (...args: unknown[]) => string;
 }
+
+// --- Plan 05-01 (B2B Portal) — admin surface primitives -----------------
+
+declare module '@/components/ui/alert-dialog' {
+  export const AlertDialog: ComponentType<AnyProps>;
+  export const AlertDialogTrigger: ComponentType<AnyProps>;
+  export const AlertDialogContent: ComponentType<AnyProps>;
+  export const AlertDialogHeader: ComponentType<AnyProps>;
+  export const AlertDialogFooter: ComponentType<AnyProps>;
+  export const AlertDialogTitle: ComponentType<AnyProps>;
+  export const AlertDialogDescription: ComponentType<AnyProps>;
+  export const AlertDialogAction: ComponentType<AnyProps>;
+  export const AlertDialogCancel: ComponentType<AnyProps>;
+  export const AlertDialogPortal: ComponentType<AnyProps>;
+  export const AlertDialogOverlay: ComponentType<AnyProps>;
+}
+
+declare module '@/components/ui/dropdown-menu' {
+  export const DropdownMenu: ComponentType<AnyProps>;
+  export const DropdownMenuTrigger: ComponentType<AnyProps>;
+  export const DropdownMenuContent: ComponentType<AnyProps>;
+  export const DropdownMenuItem: ComponentType<AnyProps>;
+  export const DropdownMenuLabel: ComponentType<AnyProps>;
+  export const DropdownMenuSeparator: ComponentType<AnyProps>;
+  export const DropdownMenuGroup: ComponentType<AnyProps>;
+  export const DropdownMenuPortal: ComponentType<AnyProps>;
+  export const DropdownMenuSub: ComponentType<AnyProps>;
+  export const DropdownMenuSubContent: ComponentType<AnyProps>;
+  export const DropdownMenuSubTrigger: ComponentType<AnyProps>;
+  export const DropdownMenuRadioGroup: ComponentType<AnyProps>;
+  export const DropdownMenuRadioItem: ComponentType<AnyProps>;
+  export const DropdownMenuCheckboxItem: ComponentType<AnyProps>;
+  export const DropdownMenuShortcut: ComponentType<AnyProps>;
+}
+
+declare module '@/components/ui/form' {
+  export const Form: ComponentType<AnyProps>;
+  export const FormItem: ComponentType<AnyProps>;
+  export const FormLabel: ComponentType<AnyProps>;
+  export const FormControl: ComponentType<AnyProps>;
+  export const FormDescription: ComponentType<AnyProps>;
+  export const FormMessage: ComponentType<AnyProps>;
+  // react-hook-form controller wrapper — typed as a generic component
+  // whose `render` prop receives a field-shaped object. Prop bag keeps
+  // TypeScript silent at call sites.
+  export const FormField: ComponentType<AnyProps>;
+}
