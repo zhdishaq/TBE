@@ -207,7 +207,7 @@
 | 2 — Inventory Layer & GDS Integration | Amadeus search works end-to-end via unified abstraction | INV-01 to INV-09 | Not started |
 | 3 — Core Flight Booking Saga (B2C) | Real booking completes: PNR → authorize → ticket → capture → email | FLTB-01–10, PAY-01–08, NOTF-01–06, COMP-01–06 | Not started |
 | 4 — B2C Portal (Customer-Facing) | B2C portal launchable; customers search, book, and manage flights + hotels + car | B2C-01–08, HOTB-01–05, CARB-01–03, PKG-01–04 | Not started |
-| 5 — B2B Agent Portal | Agents log in, book with credit wallets, receive TTL alerts | B2B-01 to B2B-10 | Not started |
+| 5 — B2B Agent Portal | 1/5 | In Progress|  |
 | 6 — Backoffice & CRM | Operations manages all bookings and finances; CRM driven by booking events | BO-01–10, CRM-01–05 | Not started |
 | 7 — Hardening & Go-Live | Production-ready: load tested, second GDS live, monitoring active | INV-03 (prod), INFRA-06 (prod observability) | Not started |
 
