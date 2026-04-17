@@ -48,7 +48,9 @@ describe('/api/wallet/balance route handler', () => {
   });
 
   it('returns 403 when there is no session at all', async () => {
-    vi.mocked(authMod.auth).mockResolvedValue(null);
+    vi.mocked(authMod.auth).mockResolvedValue(
+      null as unknown as Awaited<ReturnType<typeof authMod.auth>>,
+    );
     const mod = await importRoute();
     const res = await mod.GET();
     expect(res.status).toBe(403);
