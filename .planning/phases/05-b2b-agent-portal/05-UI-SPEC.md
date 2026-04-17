@@ -1,10 +1,11 @@
 ---
 phase: 5
 slug: b2b-agent-portal
-status: draft
+status: approved
 shadcn_initialized: false
 preset: metronic-9-starterkit (forked from b2c-web)
 created: 2026-04-17
+reviewed_at: 2026-04-17
 ---
 
 # Phase 5 — UI Design Contract
