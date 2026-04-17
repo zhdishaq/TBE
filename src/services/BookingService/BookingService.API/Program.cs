@@ -55,6 +55,19 @@ try
         opt.FallbackPolicy = new AuthorizationPolicyBuilder()
             .RequireAuthenticatedUser()
             .Build();
+
+        // Plan 05-02 Task 2 — B2BPolicy gates the /agent/bookings endpoints.
+        // Any agent role (agent | agent-admin | agent-readonly) satisfies the
+        // authN gate; D-34 / D-35 / D-37 are enforced at the controller.
+        opt.AddPolicy("B2BPolicy", p =>
+            p.RequireAuthenticatedUser()
+             .RequireAssertion(ctx =>
+                 ctx.User.HasClaim(c =>
+                     c.Type == "roles" &&
+                     (c.Value == "agent" || c.Value == "agent-admin" || c.Value == "agent-readonly"))
+                 || ctx.User.IsInRole("agent")
+                 || ctx.User.IsInRole("agent-admin")
+                 || ctx.User.IsInRole("agent-readonly")));
     });
 
     // Shared OTel + AES-GCM primitives (COMP-05 / COMP-06).

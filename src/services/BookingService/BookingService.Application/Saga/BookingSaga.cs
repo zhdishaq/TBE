@@ -111,10 +111,9 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
                     // writers — including AgentBookingsController in this
                     // plan — send "b2b".
                     ctx.Saga.ChannelText = ctx.Message.Channel;
-                    // Plan 05-02 Task 2 RED — intentionally not parsing the
-                    // typed Channel enum here so the saga's IfElse branch
-                    // fires the B2C path regardless of BookingInitiated.Channel.
-                    // Task 2 GREEN flips the parse to string.Equals("b2b", ...).
+                    ctx.Saga.Channel = string.Equals(ctx.Message.Channel, "b2b", StringComparison.OrdinalIgnoreCase)
+                        ? Channel.B2B
+                        : Channel.B2C;
                     ctx.Saga.UserId = ctx.Message.UserId;
                     ctx.Saga.TotalAmount = ctx.Message.TotalAmount;
                     ctx.Saga.Currency = ctx.Message.Currency;
