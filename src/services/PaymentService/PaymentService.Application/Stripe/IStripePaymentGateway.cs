@@ -74,7 +74,13 @@ public interface IStripePaymentGateway
         CancellationToken ct);
 }
 
-public record AuthorizeResult(string PaymentIntentId, string Status);
+/// <summary>
+/// Outcome of <see cref="IStripePaymentGateway.AuthorizeAsync"/> and
+/// <see cref="IStripePaymentGateway.CreateWalletTopUpAsync"/>. The optional
+/// <see cref="ClientSecret"/> is populated for wallet top-ups so the browser can call
+/// <c>stripe.confirmCardPayment(clientSecret, ...)</c> via Stripe Elements (D-40).
+/// </summary>
+public record AuthorizeResult(string PaymentIntentId, string Status, string? ClientSecret = null);
 
 public record CaptureResult(string PaymentIntentId, string Status);
 

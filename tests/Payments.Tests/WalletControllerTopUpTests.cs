@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using NSubstitute.ClearExtensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -27,7 +28,14 @@ public sealed class WalletControllerTopUpTests : IClassFixture<WalletControllerT
 {
     private readonly WalletControllerTestFactory _factory;
 
-    public WalletControllerTopUpTests(WalletControllerTestFactory factory) => _factory = factory;
+    public WalletControllerTopUpTests(WalletControllerTestFactory factory)
+    {
+        _factory = factory;
+        // The IWalletTopUpService substitute is shared across facts via IClassFixture;
+        // NSubstitute ReturnsForAnyArgs is sticky so we MUST clear prior configuration
+        // (otherwise an earlier fact's throw-stub bleeds into the next fact).
+        _factory.TopUpService.ClearSubstitute(ClearOptions.All);
+    }
 
     private HttpClient ClientFor(string role, Guid? agencyId = null)
     {
@@ -101,7 +109,7 @@ public sealed class WalletControllerTopUpTests : IClassFixture<WalletControllerT
         var client = ClientFor("agent-admin", agencyId: jwtAgency);
         // Body deliberately includes a forged agencyId that the controller MUST drop.
         var resp = await client.PostAsJsonAsync("/api/wallet/top-up/intent",
-            new { amount = 100m, agencyId = forgedAgency, AgencyId = forgedAgency });
+            new { amount = 100m, agencyId = forgedAgency });
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         observedAgency.Should().Be(jwtAgency, "controller must use JWT agency_id (Pitfall 28), never trust body");

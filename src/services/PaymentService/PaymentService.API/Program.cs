@@ -33,8 +33,10 @@ try
             sql => sql.EnableRetryOnFailure(maxRetryCount: 3)));
 
     builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
+    builder.Services.Configure<WalletOptions>(builder.Configuration.GetSection("Wallet"));
     builder.Services.AddSingleton<IStripePaymentGateway, StripePaymentGateway>();
     builder.Services.AddScoped<IWalletRepository, WalletRepository>();
+    builder.Services.AddScoped<IWalletTopUpService, WalletTopUpService>();
 
     builder.Services.AddControllers();
 
@@ -51,6 +53,14 @@ try
         opt.FallbackPolicy = new AuthorizationPolicyBuilder()
             .RequireAuthenticatedUser()
             .Build();
+
+        // Plan 05-03: named policies mirroring the B2B portal role model.
+        // B2BPolicy: any authenticated B2B user (admin, agent, readonly).
+        // B2BAdminPolicy: agent-admin role only — required for mutation endpoints
+        // (/api/wallet/top-up/intent, /api/wallet/transactions, /api/agents/*).
+        opt.AddPolicy("B2BPolicy", p => p.RequireAuthenticatedUser());
+        opt.AddPolicy("B2BAdminPolicy", p =>
+            p.RequireAuthenticatedUser().RequireRole("agent-admin"));
     });
 
     // Shared OTel + AES-GCM primitives.
