@@ -27,8 +27,12 @@ interface WalletBalancePayload {
 }
 
 export function WalletChip({ initialBalance, currency, roles }: WalletChipProps) {
+  // Plan 05-05 Task 5: queryKey migrated from `['wallet-balance']` (dash) to
+  // `['wallet','balance']` (array form) so the sitewide <LowBalanceBanner/>
+  // and this chip share a single TanStack cache entry (zero duplicate
+  // fetches per 30-second poll cycle).
   const { data } = useQuery<WalletBalancePayload>({
-    queryKey: ['wallet-balance'],
+    queryKey: ['wallet', 'balance'],
     queryFn: async () => {
       const r = await fetch('/api/wallet/balance');
       if (!r.ok) throw new Error(`wallet balance ${r.status}`);

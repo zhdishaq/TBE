@@ -10,10 +10,18 @@
 // ships a header placeholder ("--") so the nav chrome is complete before
 // the wallet route exists — the AgentPortalBadge + nav are the blocker
 // for every downstream plan, not the balance.
+//
+// Plan 05-05 Task 5 — sitewide <LowBalanceBanner/> mounted ABOVE <Header/>
+// so it sits above the nav chrome on every authenticated page. The banner
+// shares the `['wallet','balance']` TanStack cache with the header's
+// <WalletChip/> so the two components cost a single network round-trip per
+// 30-second poll cycle. Role prop is forwarded so non-admin agents see the
+// mailto CTA and admin users see the /admin/wallet top-up link.
 
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { Header } from '@/components/layout/header';
+import { LowBalanceBanner } from '@/components/wallet/low-balance-banner';
 
 export default async function PortalLayout({
   children,
@@ -29,6 +37,7 @@ export default async function PortalLayout({
   }
   return (
     <>
+      <LowBalanceBanner roles={session.roles ?? []} />
       <Header
         agentName={session.user?.name ?? null}
         agencyId={session.user?.agency_id}

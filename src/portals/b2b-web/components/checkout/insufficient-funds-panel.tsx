@@ -7,10 +7,17 @@
 // D-42 / 05-UI-SPEC — `role="alert"` so assistive tech announces the gate
 // immediately. Admin role gets a direct `Top up now` link to `/admin/wallet`;
 // non-admin gets a `Request top-up` mailto link to the agency admin email.
+//
+// Plan 05-05 Task 5 retrofit — the non-admin mailto is now delegated to the
+// <RequestTopUpLink/> primitive (subject-only href, no session material in
+// the query string — T-05-03-09 / T-05-05-02 mitigation codified at the
+// component level). The old inline mailto interpolated the booking GROSS
+// amount into the subject — now the CTA carries ZERO session material.
 'use client';
 
 import Link from 'next/link';
 import { formatMoney } from '@/lib/format-money';
+import { RequestTopUpLink } from '@/components/wallet/request-top-up-link';
 
 export interface InsufficientFundsPanelProps {
   gross: number;
@@ -29,9 +36,6 @@ export function InsufficientFundsPanel({
 }: InsufficientFundsPanelProps) {
   const isAdmin = roles.includes('agent-admin');
   const deficit = Math.max(0, gross - balance);
-  const mailto = `mailto:${adminEmail ?? ''}?subject=${encodeURIComponent(
-    `Top-up request: booking requires ${formatMoney(gross, currency)}`,
-  )}`;
 
   return (
     <div
@@ -54,12 +58,10 @@ export function InsufficientFundsPanel({
           Top up now
         </Link>
       ) : (
-        <a
-          href={mailto}
+        <RequestTopUpLink
+          adminEmail={adminEmail}
           className="mt-4 inline-flex h-9 items-center rounded-md border border-zinc-300 px-3 text-sm font-medium hover:bg-zinc-50"
-        >
-          Request top-up
-        </a>
+        />
       )}
     </div>
   );
