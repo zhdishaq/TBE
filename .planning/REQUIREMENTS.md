@@ -81,9 +81,9 @@
 - [x] **B2B-05**: Agent can book on behalf of a customer (passenger details entered by agent, not customer)
 - [x] **B2B-06**: Credit wallet balance displayed in agent header; booking is blocked if wallet balance insufficient
 - [x] **B2B-07**: Wallet deduction is atomic: funds reserved at booking initiation, committed on confirmation, released on failure (no double-spend)
-- [ ] **B2B-08**: Agent dashboard: bookings made, wallet balance, ticketing deadline alerts for pending PNRs
-- [ ] **B2B-09**: Ticketing deadline alerts shown for all PNRs approaching TTL (>24h warning, >2h urgent warning)
-- [ ] **B2B-10**: Agent can view and download booking documents (e-tickets, hotel vouchers)
+- [x] **B2B-08**: Agent dashboard: bookings made, wallet balance, ticketing deadline alerts for pending PNRs
+- [x] **B2B-09**: Ticketing deadline alerts shown for all PNRs approaching TTL (>24h warning, >2h urgent warning)
+- [x] **B2B-10**: Agent can view and download booking documents (e-tickets, hotel vouchers)
 
 ### Payments & Wallet (PAY)
 

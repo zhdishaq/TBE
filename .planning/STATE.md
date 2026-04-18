@@ -3,14 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-last_updated: "2026-04-18T14:30:00.000Z"
+last_updated: "2026-04-18T19:15:00.000Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 23
-  completed_plans: 26
+  completed_plans: 27
   percent: 100
-  note: "Phase 05-04 executed partially — TTL contracts + dashboard summary shipped; VoidAsync + invoice PDF + portal surfaces deferred to a follow-up plan (same precedent as 05-03 Task 3)"
 ---
 
 # Project State: TBE
@@ -26,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 ## Current Status
 
 **Milestone:** v1.0 — Full Platform
-**Phase:** 05 — B2B Agent Portal — Plan 05-04 partial: TTL B2B contracts + agency dashboard summary endpoint shipped; VoidAsync + invoice PDF + portal surfaces deferred to a follow-up plan. Same scope-reduction precedent as 05-03 Task 3.
-**Last action:** Plan 05-04 Task 1 (partial) executed as one TDD cycle (2 commits — RED/GREEN). `5fa8ca3` (RED — `TicketingDeadlineMonitorB2BTests` 5 facts + `AgencyDashboardControllerTests` 3 facts + new MassTransit contract records `TicketingDeadlineWarning` / `TicketingDeadlineUrgent` + stubbed `AgencyDashboardController`). `8469e72` (GREEN — `TtlMonitorHostedService.PollOnceAsync` extended to fan out `TicketingDeadlineWarning` (24h) + `TicketingDeadlineUrgent` (2h) whenever `s.Channel == Channel.B2B && s.AgencyId.HasValue`, alongside the existing Phase-3 `TicketingDeadlineApproaching`; both share the same `Warn24HSent` / `Warn2HSent` idempotency flags and the same `db.SaveChangesAsync` tick so EF + MassTransit outbox preserve crash-safety (T-05-04-07). `AgencyDashboardController.GetSummaryAsync` at `/api/dashboard/summary` returns `AgencyDashboardSummaryDto` with `UrgentTtlCount` / `Warning24hTtlCount` / `PendingBookingCount` / top-5 `RecentBookings`, enforcing D-34 (filter by agency_id ONLY) + Pitfall 28 (fail-closed 401). Wallet fields are deliberate zeroed placeholders — the portal overlays `/api/wallet/me` client-side to keep BookingService's query surface narrow). 8/8 new facts green; 49/49 Category!=RedPlaceholder regression green. 3 deviations + 5 deferred items documented in 05-04-SUMMARY.md.
-**Last session stop:** 2026-04-18T14:30Z — Plan 05-04 partial complete; VoidAsync / B2BAdminPolicy / TicketingDeadlineConsumer / AgencyInvoiceDocument / InvoicesController / portal surfaces deferred. Next: `/gsd-plan` a follow-up plan capturing the 5 deferred items in `.planning/phases/05-b2b-agent-portal/deferred-items.md`, then `/gsd-execute-phase 05` to land it. Requirements B2B-08 / B2B-09 / B2B-10 remain **partial** — will close together with the follow-up plan.
+**Phase:** 05 — B2B Agent Portal — Plan 05-04 **Complete**: agency invoice PDF (D-43 GROSS-only), post-ticket void gate (D-39 409), TTL deadline email fan-out consumer, D-34 agency-scoped bookings list + dashboard summary, full b2b-web portal surface (/dashboard + /bookings + /bookings/[id] + 5 route-handler proxies + /forbidden) — all under Pitfall 10 / 11 / 14 / 26 / 28 guardrails. Requirements B2B-08 / B2B-09 / B2B-10 closed. No further deferrals.
+**Last action:** Plan 05-04 closed across 7 commits. `5fa8ca3` (RED — Wave A TTL monitor + AgencyDashboardController). `8469e72` (GREEN — Wave A). `77ae647` (Wave A backend scaffolding for agency-scoped bookings + void + filters). `e9b8165` (Wave B — AgencyInvoiceDocument + InvoicesController + PdfPig D-43 negative-grep). `34e3e15` (Wave C — TicketingDeadlineConsumer + IKeycloakB2BAdminClient + LoggerTicketingDeadlineEmailSender). `4491995` (Wave D RED — 22 b2b-web facts across ttl-countdown/pager/void-booking/dashboard). `18b5b77` (Wave D GREEN — portal dashboard + bookings surface + route-handler proxies). 72/72 BookingService.Tests green; 62/62 b2b-web vitest green. 7 auto-fixes documented in 05-04-SUMMARY.md. QuestPDF race fixed via `[Collection("QuestPDF")]`.
+**Last session stop:** 2026-04-18T19:15Z — Plan 05-04 complete. Next: `/gsd-plan` Plan 05-03 Task 3 (`/admin/wallet` portal surface, 13 Next.js files) — still outstanding from a prior wave. After Phase 5, Phase 4 still has plans 04-03 / 04-04 / 04-05 staged (hotel booking, multi-product baskets, mobile E2E).
 
 ## Phase Progress
 
@@ -38,7 +37,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 | 2 | Inventory Layer & GDS Integration | Complete |
 | 3 | Core Flight Booking Saga (B2C) | Complete |
 | 4 | B2C Portal (Customer-Facing) | In progress — Wave 2 complete (Plans 00, 01, 02) |
-| 5 | B2B Agent Portal | In progress — 05-00/05-01/05-02 complete; 05-03 Tasks 1+2 complete (Task 3 deferred); 05-04 partial (TTL contracts + dashboard shipped; Void/invoice/consumer/portal deferred) |
+| 5 | B2B Agent Portal | In progress — 05-00/05-01/05-02/05-04 complete; 05-03 Tasks 1+2 complete (Task 3 `/admin/wallet` portal still deferred) |
 | 6 | Backoffice & CRM | Not started |
 | 7 | Hardening & Go-Live | Not started |
 
@@ -61,7 +60,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 | 05-01 | agent-onboarding + Keycloak admin API helper | Complete | 162604c, 2573d7e, 8911572, 67ca061, 7d6e1e9, e3b8a0f |
 | 05-02 | booking-saga B2B branch + pricing/markup + AgencyPriceRequested | Complete | 74c3aeb, c947af9, 90e9607, e021622, 5720842, 6ed72e5 |
 | 05-03 | wallet top-up caps + low-balance monitor + Keycloak B2B admin client | Tasks 1+2 complete; Task 3 (/admin/wallet portal surface) deferred | 1bb77a2, 982d4a7, d8ed7f2, 57de6f9 |
-| 05-04 | agency invoice PDF (GROSS only) + IDOR gates | Partial — TTL contracts + dashboard summary shipped; VoidAsync / B2BAdminPolicy / TicketingDeadlineConsumer / AgencyInvoiceDocument / InvoicesController / portal surfaces deferred to a follow-up plan | 5fa8ca3, 8469e72 |
+| 05-04 | agency invoice PDF (GROSS only) + IDOR gates + portal surface | Complete — all Wave A/B/C/D items shipped; B2B-08/09/10 closed | 5fa8ca3, 8469e72, 77ae647, e9b8165, 34e3e15, 4491995, 18b5b77 |
 
 ## Decisions Made (Plan 04-00)
 
@@ -132,8 +131,12 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 - **Pitfall 28 — dashboard 401 fail-closed on missing `agency_id` claim** — short-circuits before any DB query runs. Test-pinned.
 - **Dashboard wallet fields are deliberate `0m` placeholders** — `WalletBalance` / `WalletThreshold` live in PaymentService behind `/api/wallet/me` (Plan 05-01). A cross-service sync RPC from BookingService would add failure mode + latency. The portal composes both responses server-side from the RSC page.
 - **5-row cap on RecentBookings via `.Take(5)`** — plan's "top 5 by CreatedAt desc" sizing; `OrderByDescending(s => s.InitiatedAtUtc)` uses the existing saga column (InitiatedAtUtc, not CreatedAt).
-- **Deferred to a follow-up plan (5 items)** — VoidAsync endpoint + B2BAdminPolicy registration + TicketingDeadlineConsumer + AgencyInvoiceDocument QuestPDF (GROSS-only) + InvoicesController + 16-file B2B portal surface. See `.planning/phases/05-b2b-agent-portal/deferred-items.md` for full list. Requirements B2B-08 / B2B-09 / B2B-10 remain **partial** — close when the follow-up plan ships.
-- **RED `tests/Notifications.Tests/AgencyInvoiceControllerTests.cs` placeholder needs rewriting** — it expects 403 on cross-tenant, but Plan 05-04 locks 404 (Pitfall 10 — never leak existence). Rewrite is a one-line-per-test change in the follow-up plan.
+- **All previously deferred items shipped in-session (2026-04-18)** — VoidAsync (Pitfall 10 404 + D-39 409), B2BAdminPolicy registration, TicketingDeadlineConsumer (anti-spoofing — recipients re-resolved fresh from Keycloak per message), AgencyInvoiceDocument (D-43 GROSS-only, PdfPig negative-grep) + InvoicesController, and the 16-file B2B portal surface. B2B-08/09/10 closed.
+- **Notifications.Tests placeholders removed; real tests ship in BookingService.Tests** — the invoice lives in BookingService (not NotificationService) so the stale `tests/Notifications.Tests/AgencyInvoice{Controller,Document}Tests.cs` placeholders were deleted; replacements `AgencyInvoiceControllerTests.cs` (5 facts) + `AgencyInvoiceDocumentTests.cs` (3 facts) live in `tests/BookingService.Tests/`. Cross-tenant paths return **404**, matching the plan and Pitfall 10.
+- **QuestPDF static license collision fix** — concurrent `AgencyInvoiceDocumentTests` + `QuestPdfBookingReceiptGeneratorTests` flaked on Windows once both were in the same test dll. Resolved by `[Collection("QuestPDF")]` serialization — no production code change.
+- **BookingService Keycloak client duplicated from PaymentService** — ~150 LOC of `IKeycloakB2BAdminClient` + `KeycloakB2BAdminClient` + `KeycloakB2BAdminOptions` lives in both services with slightly different default `AllowedRoles` (BookingService includes `agent` because it needs recipients who can receive alerts; PaymentService excludes it because wallet alerts target admins). Deliberate — avoids shared-library coupling for 150 LOC.
+- **TtlCountdown sticky aria-live counter** — `ANNOUNCE_STICKY_TICKS=2` survives React batched renders when `vi.advanceTimersByTime(N)` fires multiple intervals inside a single `act()` flush. Necessary because a boolean `announceThisTick` state gets overwritten by the second intra-batch tick before any DOM commit.
+- **`/forbidden` generic page over `notFound()`** — cross-tenant 404s from the booking-detail RSC redirect to `/forbidden` so the URL + response timing + DOM shape never confirm whether the bruteforced id exists for some other agency. Hardens Pitfall 10 at the UX layer.
 
 ## Decisions Made (Plan 05-02)
 
@@ -175,9 +178,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 ## Next Action
 
-`/gsd-plan` a **Plan 05-04 follow-up** capturing the 5 deferred items (see `.planning/phases/05-b2b-agent-portal/deferred-items.md`): (a) `AgentBookingsController.VoidAsync` with D-39 (409 post-ticket) + Pitfall 10 (404 cross-tenant) + saga `VoidRequested` activity; (b) `B2BAdminPolicy` registration in `BookingService.API/Program.cs`; (c) `TicketingDeadlineConsumer` (`IConsumer<TicketingDeadlineWarning>` + `IConsumer<TicketingDeadlineUrgent>`) consuming the Plan 05-04 B2B contracts shipped at `8469e72`, fanning out SendGrid emails via the Plan 05-03 `IKeycloakB2BAdminClient`; (d) `AgencyInvoiceDocument` QuestPDF template (GROSS-only, D-43) + `InvoicesController` in NotificationService with Pitfall 10 404; (e) 16-file B2B portal surface (`/dashboard`, `/bookings`, `/bookings/[id]`, stream-through PDF proxies, `/forbidden`). Plan 05-04 contract surfaces are now locked — portal can safely code against `AgencyDashboardSummaryDto`.
-
-Still outstanding from Phase 5 prior waves: Plan 05-03 Task 3 `/admin/wallet` portal surface (13-file Next.js scope). Can be folded into the same follow-up plan as (e) above, or shipped standalone.
+`/gsd-plan` **Plan 05-03 Task 3** — the last remaining Phase-5 gap is the `/admin/wallet` portal surface (13-file Next.js scope from 05-03-SUMMARY.md "Deferred Work"). After that, Phase 5 is fully closed.
 
 After Phase 5, Phase 4 still has plans 04-03 / 04-04 / 04-05 staged (hotel booking, multi-product baskets, mobile E2E).
 
@@ -200,7 +201,7 @@ After Phase 5, Phase 4 still has plans 04-03 / 04-04 / 04-05 staged (hotel booki
 - **Plan 05-01 pre-deploy gate (blocks gateway rollout)** — Import `infra/keycloak/realm-tbe-b2b.json` into the target-env Keycloak (Realms → Add realm → Import). Populate `KEYCLOAK_B2B_ISSUER`, `KEYCLOAK_B2B_CLIENT_ID`, `KEYCLOAK_B2B_CLIENT_SECRET`, `KEYCLOAK_B2B_ADMIN_CLIENT_ID`, `KEYCLOAK_B2B_ADMIN_CLIENT_SECRET` in `src/portals/b2b-web/.env.local` (and the deployment env). Create a test `agent-admin` user with `agency_id` user attribute populated (GUID). Run `bash infra/keycloak/verify-audience-smoke-b2b.sh` from repo root — MUST exit 0 before the gateway `ValidateAudience=true` change ships to that env. Rollback: set `ValidateAudience = false` in Program.cs + redeploy.
 - **Plan 05-03 pre-deploy gate (blocks low-balance advisory flow)** — Create the `payment-service` client in the `tbe-b2b` Keycloak realm with client-credentials grant type enabled and assign the realm-management roles `view-users` + `query-users` (required by `KeycloakB2BAdminClient.GetAgentAdminsForAgencyAsync`). Populate `KeycloakB2B__ClientSecret` env var on PaymentService from the generated client secret.
 - **Plan 05-03 Task 3 follow-up plan** — still TODO. `/gsd-plan` a focused plan covering the 15 open acceptance criteria in 05-03-SUMMARY.md "Deferred Work" (`/admin/wallet` RSC + Stripe Elements + transactions table + threshold dialog + sitewide low-balance banner + RequestTopUpLink + route-scoped CSP narrowing + insufficient-funds-panel retrofit + vitest specs). Mitigates remaining STRIDE threats T-05-03-06 (CSP leak), T-05-03-09 (mailto session-leak).
-- **Plan 05-04 operational warning (non-blocking for existing flows)** — `TtlMonitorHostedService` now publishes `TicketingDeadlineWarning` / `TicketingDeadlineUrgent` to RabbitMQ on every B2B saga TTL crossing, but no consumer is yet registered. Messages will accumulate on the default-exchange skipped queue until the follow-up plan ships `TicketingDeadlineConsumer`. Not an outage — Phase-3 `TicketingDeadlineApproaching` continues to be consumed by the B2C advisory flow unchanged. Ops should expect non-zero `skipped_messages` metric on the `booking-service` vhost until the consumer lands.
+- **Plan 05-04 pre-deploy gate (blocks TTL deadline email flow)** — Create a Keycloak `tbe-b2b` realm client `booking-service` with service-account enabled + `view-users` + `view-clients` + `query-users` realm-management roles. Populate `KeycloakB2B__ClientSecret` env var on BookingService from the generated client-credential. Without it `TicketingDeadlineConsumer.Consume` cannot resolve agent recipients and falls back to an empty intersection (logs a warning but does not throw).
 - **Plan 05-03 prerequisite (already honoured by appsettings.json defaults)** — `Wallet__TopUp__MinAmount` / `Wallet__TopUp__MaxAmount` env vars override the £10 / £50,000 defaults.
 - Provision Keycloak `tbe-b2c-admin` service client and populate `KEYCLOAK_B2C_ADMIN_CLIENT_ID` / `KEYCLOAK_B2C_ADMIN_CLIENT_SECRET`. Until then `verify-audience-smoke.sh` exits with code 2 (env var unset) — **blocks 04-02/04-03 verification, not 04-01 execution**.
 - Populate `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` in `.env.test` before running Plan 04-02 e2e specs.
