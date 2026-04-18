@@ -23,9 +23,16 @@ const standardSecurityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
 ];
 
+// Plan 05-05 Task 1 — tightened walletCsp (dropped 'unsafe-eval').
+//
+// Pitfall 5 / SAQ-A scope preservation: Stripe.js never needs eval, and
+// the legacy 05-00 policy inherited 'unsafe-eval' verbatim from the
+// b2c-web CSP only to keep the Next.js 13 dev-mode error overlay
+// quiet. 05-05 lands the production tightening and covers it with a
+// vitest structural guard (tests/csp-route-scoping.test.ts Fact 5).
 const walletCsp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data:",
