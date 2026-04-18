@@ -7,12 +7,15 @@ using Serilog.Formatting.Compact;
 using TBE.BookingService.Application.Baskets;
 using TBE.BookingService.Application.Consumers;
 using TBE.BookingService.Application.Consumers.CompensationConsumers;
+using TBE.BookingService.Application.Keycloak;
 using TBE.BookingService.Application.Pdf;
 using TBE.BookingService.Application.Saga;
 using TBE.BookingService.Application.Ttl;
 using TBE.BookingService.Application.Ttl.Adapters;
 using TBE.BookingService.Infrastructure;
 using TBE.BookingService.Infrastructure.Baskets;
+using TBE.BookingService.Infrastructure.Consumers;
+using TBE.BookingService.Infrastructure.Keycloak;
 using TBE.BookingService.Infrastructure.Pdf;
 using TBE.BookingService.Infrastructure.Ttl;
 using TBE.Common.Messaging;
@@ -117,6 +120,19 @@ try
     // data. Route: GET /api/invoices/{bookingId}.pdf under B2BPolicy.
     builder.Services.AddScoped<IAgencyInvoicePdfGenerator, QuestPdfAgencyInvoiceGenerator>();
 
+    // Plan 05-04 Task 1 (B2B-09) — TTL-deadline fan-out. TimeProvider.System lets
+    // tests swap in FakeTimeProvider for deterministic Keycloak-token-cache
+    // stepping. The Keycloak client typed-HttpClient is scoped; its options bind
+    // to the "KeycloakB2BAdmin" configuration section (see appsettings.json).
+    // The e-mail sender is the log-only MVP stub; a follow-up plan will replace
+    // it with a SendGrid transport once the NotificationService template
+    // contract for ticketing-deadline advisories is approved.
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.Configure<KeycloakB2BAdminOptions>(
+        builder.Configuration.GetSection("KeycloakB2BAdmin"));
+    builder.Services.AddHttpClient<IKeycloakB2BAdminClient, KeycloakB2BAdminClient>();
+    builder.Services.AddScoped<ITicketingDeadlineEmailSender, LoggerTicketingDeadlineEmailSender>();
+
     // Plan 04-04 / D-08 — the basket single-PI gateway. A thin bus-command adapter
     // (NullBasketPaymentGateway) is bound by default so tests and local dev run
     // without PaymentService; production wires a real adapter forwarding to the
@@ -142,6 +158,12 @@ try
             x.AddConsumer<CreatePnrConsumer>();
             // Plan 04-04 / D-08 — sequential partial capture orchestrator on a single combined PI.
             x.AddConsumer<BasketPaymentOrchestrator>();
+            // Plan 05-04 Task 1 (B2B-09) — fan out TTL-deadline advisories to the
+            // agency's agent-admin + agent users via Keycloak-resolved recipients.
+            // Both warn (24h) and urgent (2h) horizons land on the same class;
+            // the audit note in deferred-items.md flagged that unconsumed events
+            // were accumulating on the default exchange.
+            x.AddConsumer<TicketingDeadlineConsumer>();
         },
         configureOutbox: x =>
         {
