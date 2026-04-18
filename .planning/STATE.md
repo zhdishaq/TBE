@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 05
-last_updated: "2026-04-18T00:10:00.000Z"
+last_updated: "2026-04-18T07:22:21.420Z"
 progress:
   total_phases: 7
   completed_phases: 4
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 ## Current Status
 
 **Milestone:** v1.0 — Full Platform
-**Phase:** 05 — B2B Agent Portal — Plan 05-02 complete (booking-saga B2B branch + pricing/markup + portal dual-pricing + wallet checkout)
-**Last action:** Plan 05-02 executed atomically as 3 TDD tasks (6 commits — RED/GREEN each). `74c3aeb` + `c947af9` (Task 1 AgencyMarkupRules engine + AgencyPriceRequestedConsumer + filtered unique index + 4-tuple net/markup/gross/commission with override??base resolver), `90e9607` + `e021622` (Task 2 BookingSagaState B2B columns + saga IfElse branch at PnrCreated routing B2B→WalletReserveCommand/B2C→AuthorizePaymentCommand + AgentBookingsController server-stamping AgencyId/Channel from JWT with D-34/D-35/D-37 gates + T-05-02-07 audit log + DuringAny AgentBookingDetailsCaptured handler), `5720842` + `6ed72e5` (Task 3 b2b portal 4-column dual-pricing grid + tabular-nums + aria-label + commission sort + indigo-600 selection + CheckoutDetailsForm admin-only override + DebitSummary CTA routing + InsufficientFundsPanel role-aware copy + WalletChip 30s poll + /api/wallet/balance nodejs route + Header async RSC prehydration). B2B-03 + B2B-04 + B2B-05 + B2B-06 marked complete in REQUIREMENTS.md. 3 auto-fixed deviations documented in 05-02-SUMMARY.md (ChannelText test rename, /checkout/success payment_intent defensive guard, async Header test refactor).
-**Last session stop:** 2026-04-18T00:10Z — Plan 05-02 complete; next: `/gsd-execute-phase 05` for Plan 05-03 (wallet top-up caps + Stripe PaymentIntent).
+**Phase:** 05 — B2B Agent Portal — Plan 05-03 Tasks 1+2 complete (wallet top-up caps + RFC 7807 problem+json + low-balance monitor + MassTransit consumer + Keycloak B2B admin client). Task 3 (/admin/wallet portal surface) deferred to a follow-up plan.
+**Last action:** Plan 05-03 executed atomically across two agent sessions as two TDD tasks (4 commits — RED/GREEN each). `1bb77a2` + `982d4a7` (Task 1 — `WalletOptions` nested shape + `WalletTopUpService` D-40 cap enforcement via `IOptionsMonitor<WalletOptions>.CurrentValue.TopUp` + idempotent `CommitTopUpAsync` using `stripe-topup-{pi.Id}` key (Pitfall 20 webhook replay) + `B2BWalletController` `/api/wallet/*` with `ContentResult { ContentType = "application/problem+json" }` on cap violations + `B2BPolicy` / `B2BAdminPolicy` + Pitfall 28 agency_id-from-JWT-only). `d8ed7f2` + `57de6f9` (Task 2 — `WalletLowBalanceMonitor : BackgroundService` with `public TickAsync` + `IPublishEndpoint` fan-out + `WalletLowBalanceConsumer : IConsumer<WalletLowBalanceDetected>` with `AgencyWallet.LastLowBalanceEmailAtUtc` cooldown defence-in-depth + `IKeycloakB2BAdminClient` service-account token cache (30s skew + `SemaphoreSlim`) resolving the intersection of `q=agency_id:X&exact=true` AND `agent-admin` role-mapping (T-05-03-11 anti-spoof) + EF migration `20260525000000_AddAgencyWallet` with `UNIQUE(AgencyId)` + `AgencyWalletRepository` Dapper impl with `MERGE WITH (HOLDLOCK)` upsert + `WalletLowBalanceEmailSender` logger-only Phase-5 MVP stub + `Program.cs` wiring for `TimeProvider.System` / `AddHttpClient<IKeycloakB2BAdminClient>` / `AddHostedService<WalletLowBalanceMonitor>` / `x.AddConsumer<WalletLowBalanceConsumer>` + `appsettings.json` `KeycloakB2B` section). 30/30 Payments.Tests facts green (23 Task 1 + 7 Task 2). B2B-07 (atomic wallet deduction) marked complete — production gate is the Phase 03-01 `UPDLOCK,ROWLOCK,HOLDLOCK` path on `payment.WalletTransactions` already consumed by Plan 05-02's saga B2B branch; Plan 05-03 adds the low-balance advisory flow on top without regressing it. 7 deviations documented in 05-03-SUMMARY.md (6 from Task 1, 1 `ReadFromJsonAsync(cancellationToken: ct)` fix in Task 2).
+**Last session stop:** 2026-04-17T18:00Z — Plan 05-03 Tasks 1+2 complete; Task 3 deferred. Next: `/gsd-plan` a standalone `/admin/wallet` portal surface plan (13 new files across Next.js client/server components, Stripe Elements wrapper, route-scoped CSP narrowing, sitewide low-balance banner, RequestTopUpLink mailto, insufficient-funds-panel retrofit + Vitest suite), then `/gsd-execute-phase 05` for Plan 05-04 (agency invoice PDF + IDOR gates).
 
 ## Phase Progress
 
@@ -37,7 +37,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 | 2 | Inventory Layer & GDS Integration | Complete |
 | 3 | Core Flight Booking Saga (B2C) | Complete |
 | 4 | B2C Portal (Customer-Facing) | In progress — Wave 2 complete (Plans 00, 01, 02) |
-| 5 | B2B Agent Portal | In progress — Plan 05-02 complete (saga + pricing + portal checkout) |
+| 5 | B2B Agent Portal | In progress — Plan 05-03 Tasks 1+2 complete (top-up caps + low-balance monitor); Task 3 (/admin/wallet portal surface) deferred |
 | 6 | Backoffice & CRM | Not started |
 | 7 | Hardening & Go-Live | Not started |
 
@@ -59,7 +59,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 | 05-00 | b2b-agent-portal-scaffold (Wave 0) | Complete | 8b8a376, d5d1f35, 64ff67c |
 | 05-01 | agent-onboarding + Keycloak admin API helper | Complete | 162604c, 2573d7e, 8911572, 67ca061, 7d6e1e9, e3b8a0f |
 | 05-02 | booking-saga B2B branch + pricing/markup + AgencyPriceRequested | Complete | 74c3aeb, c947af9, 90e9607, e021622, 5720842, 6ed72e5 |
-| 05-03 | wallet top-up caps + Stripe PaymentIntent | Pending (3 red placeholders staged) | — |
+| 05-03 | wallet top-up caps + low-balance monitor + Keycloak B2B admin client | Tasks 1+2 complete; Task 3 (/admin/wallet portal surface) deferred | 1bb77a2, 982d4a7, d8ed7f2, 57de6f9 |
 | 05-04 | agency invoice PDF (GROSS only) + IDOR gates | Pending (6 red placeholders staged) | — |
 
 ## Decisions Made (Plan 04-00)
@@ -106,6 +106,21 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 - **D-43 Invoice PDF = GROSS only** — new `AgencyInvoiceDocument` QuestPDF generator; no NET/markup/commission rendered.
 - **D-44 UI-SPEC defaults locked** — compact tables, 20/50/100 page-number pager, stricter tone, 2-col dashboard, inline Stripe top-up, dark mode, Radix AlertDialog destructive confirms — all promoted from ASSUMED to LOCKED.
 
+## Decisions Made (Plan 05-03)
+
+- **D-40 hot-reload via IOptionsMonitor<WalletOptions>** — `WalletTopUpService.CreateTopUpIntentAsync` reads `CurrentValue.TopUp` on every call; `WalletLowBalanceMonitor.TickAsync` reads `CurrentValue.LowBalance.PollIntervalMinutes` on every tick (guarded by `Math.Max(1, ...)`). Admins can change caps and cadence via env/config without a PaymentService restart.
+- **Content-Type pinned RFC 7807** — cap violations on `POST /api/wallet/top-up/intent` return `ContentResult { ContentType = "application/problem+json", StatusCode = 400 }` with hand-serialised JSON body carrying `type = /errors/wallet-topup-out-of-range` + `allowedRange { min, max, currency }` + `requested` extensions. `ObjectResult<ProblemDetails>` is deliberately NOT used because its Content-Type is swayed by the active output formatter — the portal's content-type branching must not receive `application/json`.
+- **Pitfall 28 — JWT agency_id claim is single source of truth** — `B2BWalletController` derives `agency_id` from `User.FindFirst("agency_id")` on every endpoint; body-supplied `agencyId` is never deserialised. Locked pattern for all subsequent B2B endpoints.
+- **T-05-03-07 separation of concerns** — monitor publishes `WalletLowBalanceDetected`, consumer emails. Retry semantics flow through MassTransit error-queue redelivery; the monitor never sends e-mail directly.
+- **T-05-03-11 anti-spoofing — Keycloak intersection** — `KeycloakB2BAdminClient.GetAgentAdminsForAgencyAsync` returns the intersection of `GET /admin/realms/tbe-b2b/users?q=agency_id:X&exact=true` AND per-user `GET /users/{id}/role-mappings/realm` where `name = agent-admin`. A user merely added to the agency without the admin role never appears in the recipient list.
+- **Hysteresis re-arm flow** — `AgencyWallet.LowBalanceEmailSent` is flipped `true` by `WalletLowBalanceConsumer.Consume` on successful notify, reset `false` by (a) `WalletTopUpService.CommitTopUpAsync` on balance cross-up, and (b) `AgencyWalletRepository.SetThresholdAsync` on threshold change. Monitor query `WHERE LowBalanceEmailSent = 0 ... HAVING SUM < Threshold` — so one cross-down fires exactly one advisory per cycle.
+- **1:1 wallet↔agency mapping — walletId == agencyId** — architectural reconciliation surfaced during implementation, not in PLAN.md. `IAgencyWalletRepository.ListAgenciesBelowThresholdAsync` LEFT JOINs `payment.WalletTransactions ON WalletId = AgencyId`. Keeps Phase 03-01's `IWalletRepository` (keyed by WalletId) working without an extra lookup.
+- **Stub IWalletLowBalanceEmailSender for Phase-5 MVP** — logger-only `"wallet low-balance advisory (stub)"` implementation; non-throwing so the consumer can still flip `LowBalanceEmailSent = 1` in dev/test. Real SendGrid transport deferred to a follow-up plan after the cross-service advisory-template contract with NotificationService is approved.
+- **Task 3 (/admin/wallet portal surface) explicitly deferred to a follow-up plan** — 13-file Next.js portal scope (RSC page + Stripe Elements + transactions table + threshold dialog + sitewide low-balance banner + RequestTopUpLink + route-scoped CSP + insufficient-funds-panel retrofit + vitest suite). Documented open acceptance criteria and remaining STRIDE threats (T-05-03-06 CSP leak, T-05-03-08, T-05-03-09 mailto session-leak) in 05-03-SUMMARY.md "Deferred Work".
+- **Distinct contract — WalletLowBalanceDetected ≠ WalletLowBalance** — new `TBE.Contracts.Messages.WalletLowBalanceDetected(AgencyId, Balance, Threshold, Currency, DetectedAt)` introduced alongside the pre-existing `TBE.Contracts.Events.WalletLowBalance` (Phase 03-04, WalletId-only). A `Detected_contract_shape` guardrail xUnit fact prevents a future refactor from collapsing the two records.
+- **EF migration ordering locked — 20260525000000_AddAgencyWallet** — lands after Plan 05-02's `20260520000000_AddB2BBookingColumns`; table `payment.AgencyWallets` with `UNIQUE(AgencyId)` (T-05-03-05 loud cross-tenant failure), `decimal(18,4)` money columns, `SYSUTCDATETIME()` defaults.
+- **Deviations auto-fixed during execution (7 total)** — Task 1 (6): problem+json ContentResult fix, `Microsoft.AspNetCore.Mvc.Testing 8.0.11` add (`net8`-pinned), path reconciliation (no Domain project; AgencyWallet in Application layer), WalletTopUpCapsTests gravestone, NSubstitute `ClearSubstitute` hygiene, legacy-controller role-string preservation (`"agency-admin"` hyphenated vs new `B2BAdminPolicy("agent-admin")`). Task 2 (1): `ReadFromJsonAsync` uses `cancellationToken:` (positional-named), not `ct:` — fixed three call sites in `KeycloakB2BAdminClient.cs` after CS1739.
+
 ## Decisions Made (Plan 05-02)
 
 - **D-33 claim-sourced AgencyId everywhere** — `AgentBookingsController` stamps `AgencyId` from `User.FindFirst("agency_id")`, never from the request body. `CreateAgentBookingRequest` DTO literally omits the `AgencyId` + `Channel` properties so a tampered JSON body has nothing to be parsed from (T-05-02-01 / T-05-02-08 mitigated at the type level).
@@ -146,10 +161,18 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 ## Next Action
 
-Run `/gsd-execute-phase 05` to execute Plan 05-03 (wallet top-up caps + Stripe PaymentIntent). Plan 05-03 consumes the `WalletReserveCommand`/`WalletReserved`/`WalletReserveFailed` contracts shipped in Plan 05-02 and the `B2BAdminPolicy` shipped in 05-01 to gate wallet top-up management. 05-03 will introduce the agency-level wallet Stripe PaymentIntent flow (isolated to `/admin/wallet/*` where the walletCsp allow-list was reserved in Plan 05-00).
+Plan Plan 05-03-Task-3 (the `/admin/wallet` portal surface — 13-file Next.js scope; see 05-03-SUMMARY.md "Deferred Work") as its own standalone plan via `/gsd-plan`, then `/gsd-execute-phase 05` to land it. In parallel, `/gsd-execute-phase 05` can also advance to Plan 05-04 (agency invoice PDF GROSS-only + IDOR gates) — 05-04 is not dependency-blocked by the deferred 05-03-Task-3 portal surface. Both consume the `B2BAdminPolicy` + `B2BPolicy` + `/api/wallet/*` controller shipped in 05-03 Tasks 1+2 and the saga B2B branch shipped in 05-02.
 
-**Pre-deploy gates for Plan 05-02:**
-- Apply the two EF Core migrations before deploy: `20260416000000_AddAgencyMarkupRules` (PricingDbContext) and `20260520000000_AddB2BBookingColumns` (BookingDbContext). Seed rules for test agencies ship in the pricing migration.
+**Pre-deploy gates for Plan 05-03 (Tasks 1+2):**
+
+- Apply the new EF Core migration before deploy: `20260525000000_AddAgencyWallet` (PaymentDbContext). Creates `payment.AgencyWallets` with `UNIQUE(AgencyId)`. No seed data — agency rows are inserted on first `PUT /api/wallet/threshold` or via the MERGE upsert in `AgencyWalletRepository.SetThresholdAsync`.
+- Populate `KeycloakB2B:ClientSecret` env var (`KeycloakB2B__ClientSecret` in ASP.NET Core env-binding) on PaymentService. Without it the `WalletLowBalanceConsumer` cannot resolve agent-admin recipients and falls back to logging a warning while still flipping the `LowBalanceEmailSent` flag (dev/test non-regression, production-blocker for the advisory flow).
+- Create a Keycloak `tbe-b2b` realm client `payment-service` with service-account enabled + `view-users` + `view-clients` + `query-users` realm-management roles. Populate `KeycloakB2B:ClientSecret` from the generated client-credential.
+- `Wallet__LowBalance__DefaultThreshold` / `__EmailCooldownHours` / `__PollIntervalMinutes` env vars override the 500 GBP / 24h / 15-min defaults. `IOptionsMonitor` re-reads on every tick + every top-up call so changes apply without a restart.
+
+**Pre-deploy gates for Plan 05-02 (still apply):**
+
+- Apply the two EF Core migrations: `20260416000000_AddAgencyMarkupRules` (PricingDbContext) and `20260520000000_AddB2BBookingColumns` (BookingDbContext). Seed rules for test agencies ship in the pricing migration.
 - Plan 05-01's `verify-audience-smoke-b2b.sh` gate still applies (unchanged).
 
 After Phase 5, Phase 4 still has plans 04-03 / 04-04 / 04-05 staged (hotel booking, multi-product baskets, mobile E2E) — not blocked by Phase 5 but remaining backlog for the B2C portal.
@@ -157,7 +180,9 @@ After Phase 5, Phase 4 still has plans 04-03 / 04-04 / 04-05 staged (hotel booki
 ## Open Human Actions
 
 - **Plan 05-01 pre-deploy gate (blocks gateway rollout)** — Import `infra/keycloak/realm-tbe-b2b.json` into the target-env Keycloak (Realms → Add realm → Import). Populate `KEYCLOAK_B2B_ISSUER`, `KEYCLOAK_B2B_CLIENT_ID`, `KEYCLOAK_B2B_CLIENT_SECRET`, `KEYCLOAK_B2B_ADMIN_CLIENT_ID`, `KEYCLOAK_B2B_ADMIN_CLIENT_SECRET` in `src/portals/b2b-web/.env.local` (and the deployment env). Create a test `agent-admin` user with `agency_id` user attribute populated (GUID). Run `bash infra/keycloak/verify-audience-smoke-b2b.sh` from repo root — MUST exit 0 before the gateway `ValidateAudience=true` change ships to that env. Rollback: set `ValidateAudience = false` in Program.cs + redeploy.
-- **Plan 05-03 prerequisite** — Populate `Wallet__TopUp__MinAmount` / `Wallet__TopUp__MaxAmount` env vars for PaymentService (defaults apply if unset: £10 / £50,000).
+- **Plan 05-03 pre-deploy gate (blocks low-balance advisory flow)** — Create the `payment-service` client in the `tbe-b2b` Keycloak realm with client-credentials grant type enabled and assign the realm-management roles `view-users` + `query-users` (required by `KeycloakB2BAdminClient.GetAgentAdminsForAgencyAsync`). Populate `KeycloakB2B__ClientSecret` env var on PaymentService from the generated client secret.
+- **Plan 05-03 Task 3 follow-up plan** — still TODO. `/gsd-plan` a focused plan covering the 15 open acceptance criteria in 05-03-SUMMARY.md "Deferred Work" (`/admin/wallet` RSC + Stripe Elements + transactions table + threshold dialog + sitewide low-balance banner + RequestTopUpLink + route-scoped CSP narrowing + insufficient-funds-panel retrofit + vitest specs). Mitigates remaining STRIDE threats T-05-03-06 (CSP leak), T-05-03-09 (mailto session-leak).
+- **Plan 05-03 prerequisite (already honoured by appsettings.json defaults)** — `Wallet__TopUp__MinAmount` / `Wallet__TopUp__MaxAmount` env vars override the £10 / £50,000 defaults.
 - Provision Keycloak `tbe-b2c-admin` service client and populate `KEYCLOAK_B2C_ADMIN_CLIENT_ID` / `KEYCLOAK_B2C_ADMIN_CLIENT_SECRET`. Until then `verify-audience-smoke.sh` exits with code 2 (env var unset) — **blocks 04-02/04-03 verification, not 04-01 execution**.
 - Populate `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` in `.env.test` before running Plan 04-02 e2e specs.
 

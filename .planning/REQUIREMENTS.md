@@ -80,7 +80,7 @@
 - [x] **B2B-04**: Agent sees commission amount per booking before confirming
 - [x] **B2B-05**: Agent can book on behalf of a customer (passenger details entered by agent, not customer)
 - [x] **B2B-06**: Credit wallet balance displayed in agent header; booking is blocked if wallet balance insufficient
-- [ ] **B2B-07**: Wallet deduction is atomic: funds reserved at booking initiation, committed on confirmation, released on failure (no double-spend)
+- [x] **B2B-07**: Wallet deduction is atomic: funds reserved at booking initiation, committed on confirmation, released on failure (no double-spend)
 - [ ] **B2B-08**: Agent dashboard: bookings made, wallet balance, ticketing deadline alerts for pending PNRs
 - [ ] **B2B-09**: Ticketing deadline alerts shown for all PNRs approaching TTL (>24h warning, >2h urgent warning)
 - [ ] **B2B-10**: Agent can view and download booking documents (e-tickets, hotel vouchers)
@@ -194,7 +194,9 @@
 | CARB-01 to CARB-03 | Phase 5 | Pending |
 | PKG-01 to PKG-04 | Phase 5 | Pending |
 | B2B-01, B2B-02 | Phase 5 | Complete (Plan 05-01) |
-| B2B-03 to B2B-10 | Phase 5 | Pending |
+| B2B-03 to B2B-06 | Phase 5 | Complete (Plan 05-02) |
+| B2B-07 | Phase 5 | Complete (Plans 03-01 + 05-02 + 05-03) |
+| B2B-08 to B2B-10 | Phase 5 | Pending |
 | BO-01 to BO-10 | Phase 7 | Pending |
 | CRM-01 to CRM-05 | Phase 7 | Pending |
 
