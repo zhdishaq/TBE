@@ -68,6 +68,15 @@ try
                  || ctx.User.IsInRole("agent")
                  || ctx.User.IsInRole("agent-admin")
                  || ctx.User.IsInRole("agent-readonly")));
+
+        // Plan 05-04 Task 1 (B2B-10) — B2BAdminPolicy gates write-side admin
+        // endpoints (POST /agent/bookings/{id}/void). ONLY agent-admin may
+        // void a booking; agent + agent-readonly are forbidden.
+        opt.AddPolicy("B2BAdminPolicy", p =>
+            p.RequireAuthenticatedUser()
+             .RequireAssertion(ctx =>
+                 ctx.User.HasClaim(c => c.Type == "roles" && c.Value == "agent-admin")
+                 || ctx.User.IsInRole("agent-admin")));
     });
 
     // Shared OTel + AES-GCM primitives (COMP-05 / COMP-06).

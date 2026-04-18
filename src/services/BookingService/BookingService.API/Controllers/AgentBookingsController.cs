@@ -133,11 +133,20 @@ public sealed class AgentBookingsController(
     /// <summary>
     /// D-34 — agency-wide booking list for every agent role. Filter by
     /// <c>agency_id</c> claim ONLY; never additionally by <c>sub</c>.
+    ///
+    /// <para>
+    /// Plan 05-04 Task 1 adds server-side client-name contains filter, PNR
+    /// equals filter, page-size clamp [20, 100] with default 20, and
+    /// deterministic <c>InitiatedAtUtc</c> desc ordering (nuqs URL-synced
+    /// filters land client-side).
+    /// </para>
     /// </summary>
     [HttpGet("me")]
     public async Task<IActionResult> ListForAgencyAsync(
         int page = 1,
         int size = 20,
+        string? client = null,
+        string? pnr = null,
         CancellationToken ct = default)
     {
         var agencyIdClaim = User.FindFirst("agency_id")?.Value;
@@ -145,13 +154,32 @@ public sealed class AgentBookingsController(
             return Unauthorized(new { error = "missing agency_id claim" });
 
         if (page < 1) page = 1;
-        if (size is < 1 or > 100) size = 20;
+        // Plan 05-04 — clamp pager options to [20, 50, 100]. Any out-of-range
+        // size collapses to the 20 floor or 100 ceiling deliberately (no 400).
+        if (size < 20) size = 20;
+        else if (size > 100) size = 100;
 
         // D-34 — filter by AgencyId ONLY. Deliberately not appending
         // `&& s.UserId == sub`.
-        var items = await db.BookingSagaStates
+        var query = db.BookingSagaStates
             .AsNoTracking()
-            .Where(s => s.AgencyId == agencyId)
+            .Where(s => s.AgencyId == agencyId);
+
+        if (!string.IsNullOrWhiteSpace(client))
+        {
+            // Case-insensitive contains (EF Core lowers both sides).
+            var needle = client.ToLower();
+            query = query.Where(s => s.CustomerName != null
+                && s.CustomerName.ToLower().Contains(needle));
+        }
+
+        if (!string.IsNullOrWhiteSpace(pnr))
+        {
+            var pnrNorm = pnr.ToUpper();
+            query = query.Where(s => s.GdsPnr != null && s.GdsPnr.ToUpper() == pnrNorm);
+        }
+
+        var items = await query
             .OrderByDescending(s => s.InitiatedAtUtc)
             .Skip((page - 1) * size)
             .Take(size)
@@ -168,6 +196,86 @@ public sealed class AgentBookingsController(
             .ToListAsync(ct);
 
         return Ok(new { page, size, items });
+    }
+
+    /// <summary>
+    /// Plan 05-04 Task 1 (B2B-10) — admin-only pre-ticket void.
+    ///
+    /// Security rules (Pitfall 10 — NEVER leak booking existence):
+    /// <list type="bullet">
+    ///   <item>Caller not <c>agent-admin</c> → 403 (B2BAdminPolicy).</item>
+    ///   <item>Booking not found OR belongs to a different agency → 404
+    ///         (NEVER 403; a 403 would leak existence to cross-tenant scans).</item>
+    ///   <item>Booking already ticketed (has <c>TicketNumber</c>) → 409 +
+    ///         <c>application/problem+json</c> with type
+    ///         <c>/errors/post-ticket-cancel-unsupported</c> (D-39).</item>
+    ///   <item>Pre-ticket → 202 AcceptedAtAction; a
+    ///         <see cref="TBE.Contracts.Events.VoidRequested"/> event is
+    ///         published on the EF+MassTransit outbox so the saga can run
+    ///         the compensation chain (release wallet, void PNR).</item>
+    /// </list>
+    /// </summary>
+    [HttpPost("{id:guid}/void")]
+    [Authorize(Policy = "B2BAdminPolicy")]
+    public async Task<IActionResult> VoidAsync(Guid id, CancellationToken ct)
+    {
+        var agencyIdClaim = User.FindFirst("agency_id")?.Value;
+        if (string.IsNullOrWhiteSpace(agencyIdClaim) || !Guid.TryParse(agencyIdClaim, out var agencyId))
+            return Unauthorized(new { error = "missing agency_id claim" });
+
+        // Defence-in-depth — mirrors the B2BAdminPolicy decision so unit tests
+        // without the auth pipeline still honour D-39 / agent-admin-only, and
+        // so a future middleware misconfig cannot leak void permissions to
+        // non-admins.
+        if (!HasRole("agent-admin"))
+            return Forbid();
+
+        var state = await db.BookingSagaStates
+            .AsNoTracking()
+            .Where(s => s.CorrelationId == id)
+            .Select(s => new { s.AgencyId, s.CorrelationId, s.TicketNumber })
+            .FirstOrDefaultAsync(ct);
+
+        // Pitfall 10 — cross-tenant = 404. Missing = 404. Never leak existence.
+        if (state is null || state.AgencyId != agencyId)
+            return NotFound();
+
+        // D-39 — post-ticket cancel is refused with 409 + problem+json.
+        if (!string.IsNullOrWhiteSpace(state.TicketNumber))
+        {
+            var problem = new ProblemDetails
+            {
+                Title = "Post-ticket cancel unsupported",
+                Status = StatusCodes.Status409Conflict,
+                Type = "/errors/post-ticket-cancel-unsupported",
+                Detail = "This booking has already been ticketed. Post-ticket cancellations require manual reconciliation (Phase 6).",
+                Instance = HttpContext?.Request.Path.Value,
+            };
+            return new ObjectResult(problem)
+            {
+                StatusCode = StatusCodes.Status409Conflict,
+                ContentTypes = { "application/problem+json" },
+            };
+        }
+
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub")
+            ?? string.Empty;
+
+        logger.LogInformation(
+            "BOOK-VOID booking={BookingId} agency={AgencyId} requester={Sub}",
+            state.CorrelationId, agencyId, sub);
+
+        await publishEndpoint.Publish(new TBE.Contracts.Events.VoidRequested(
+            BookingId: state.CorrelationId,
+            RequestedByUserId: sub,
+            Reason: "admin_requested_void",
+            RequestedAt: DateTimeOffset.UtcNow), ct);
+
+        return AcceptedAtAction(
+            nameof(GetByIdAsync),
+            new { id = state.CorrelationId },
+            new { bookingId = state.CorrelationId, status = "VoidRequested" });
     }
 
     [HttpGet("{id:guid}")]

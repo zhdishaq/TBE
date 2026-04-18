@@ -42,6 +42,11 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
     public State Compensating { get; private set; } = null!;
     public State Failed { get; private set; } = null!;
 
+    // Plan 05-04 Task 1 (B2B-10) — terminal state for admin-requested
+    // pre-ticket voids. Distinct from Failed so ops metrics can distinguish
+    // customer-requested cancellations from saga-compensation failures.
+    public State Cancelled { get; private set; } = null!;
+
     // Forward events
     public Event<BookingInitiated> BookingInitiated { get; private set; } = null!;
     public Event<PriceReconfirmed> PriceReconfirmed { get; private set; } = null!;
@@ -57,6 +62,9 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
     // Plan 05-02 Task 2 — follow-up event stamping agency pricing + customer contact
     // onto the saga immediately after BookingInitiated (D-33, D-36, D-37, B2B-04).
     public Event<AgentBookingDetailsCaptured> AgentBookingDetailsCaptured { get; private set; } = null!;
+
+    // Plan 05-04 Task 1 (B2B-10) — pre-ticket void request event.
+    public Event<VoidRequested> VoidRequested { get; private set; } = null!;
 
     // Failure callbacks
     public Event<PriceReconfirmationFailed> PriceReconfirmationFailed { get; private set; } = null!;
@@ -83,6 +91,8 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
         Event(() => WalletReserveFailed, x => x.CorrelateById(m => m.Message.BookingId));
 
         Event(() => AgentBookingDetailsCaptured, x => x.CorrelateById(m => m.Message.BookingId));
+
+        Event(() => VoidRequested, x => x.CorrelateById(m => m.Message.BookingId));
 
         Event(() => PriceReconfirmationFailed, x => x.CorrelateById(m => m.Message.BookingId));
         Event(() => PnrCreationFailed, x => x.CorrelateById(m => m.Message.BookingId));
@@ -297,6 +307,52 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
                     if (!string.IsNullOrWhiteSpace(ctx.Message.OfferId))
                         ctx.Saga.OfferToken ??= ctx.Message.OfferId;
                 }));
+
+        // Plan 05-04 Task 1 (B2B-10) — admin-requested pre-ticket void.
+        // The controller refuses post-ticket voids with 409 D-39, so the saga
+        // treats TicketNumber / LastSuccessfulStep as the pre/post-ticket
+        // discriminator. Once a ticket has been issued (TicketNumber set) OR
+        // the saga has already transitioned past TicketIssuing (Capturing /
+        // Confirmed / Failed), VoidRequested is silently dropped.
+        //
+        // For B2B sagas that have reserved the wallet we publish
+        // WalletReleaseCommand (wallet ledger unholds the balance).
+        // For B2C sagas we cancel any outstanding Stripe authorization.
+        // For any saga with a PNR we publish VoidPnrCommand.
+        // Finally BookingCancelled is published so NOTF-04's existing
+        // BookingCancelledConsumer sends the cancellation email.
+        DuringAny(
+            When(VoidRequested,
+                 ctx => string.IsNullOrWhiteSpace(ctx.Saga.TicketNumber)
+                        && ctx.Saga.LastSuccessfulStep != "PaymentCaptured"
+                        && ctx.Saga.LastSuccessfulStep != "TicketIssued"
+                        && ctx.Saga.LastSuccessfulStep != "Cancelled")
+                .If(ctx => ctx.Saga.Channel == Channel.B2B
+                           && ctx.Saga.WalletReservationTxId.HasValue
+                           && ctx.Saga.WalletId.HasValue,
+                    b => b.Publish(ctx => new WalletReleaseCommand(
+                        BookingId: ctx.Saga.CorrelationId,
+                        WalletId: ctx.Saga.WalletId!.Value,
+                        ReservationTxId: ctx.Saga.WalletReservationTxId!.Value)))
+                .If(ctx => ctx.Saga.Channel == Channel.B2C
+                           && !string.IsNullOrEmpty(ctx.Saga.StripePaymentIntentId),
+                    b => b.Publish(ctx => new CancelAuthorizationCommand(
+                        ctx.Saga.CorrelationId,
+                        ctx.Saga.StripePaymentIntentId ?? string.Empty)))
+                .If(ctx => !string.IsNullOrEmpty(ctx.Saga.GdsPnr),
+                    b => b.Publish(ctx => new VoidPnrCommand(
+                        ctx.Saga.CorrelationId,
+                        ctx.Saga.GdsPnr ?? string.Empty,
+                        "admin_requested_void")))
+                .Unschedule(HardTimeout)
+                .Publish(ctx => new BookingCancelled(
+                    ctx.Saga.CorrelationId,
+                    Guid.NewGuid(),
+                    ctx.Message.Reason ?? "admin_requested_void",
+                    DateTimeOffset.UtcNow))
+                .Then(ctx => ctx.Saga.LastSuccessfulStep = "Cancelled")
+                .TransitionTo(Cancelled)
+                .Finalize());
 
         SetCompletedWhenFinalized();
     }

@@ -134,3 +134,20 @@ public record BookingTimeoutExpired(Guid BookingId);
 /// CorrelationId equals the saga's CorrelationId (which equals BookingId).
 /// </summary>
 public record SagaDeadLetterRequested(Guid CorrelationId, string StepName, string Cause, DateTimeOffset OccurredAt);
+
+/// <summary>
+/// Plan 05-04 Task 1 (B2B-10) — published by <c>AgentBookingsController.VoidAsync</c>
+/// when an agent-admin requests a pre-ticket cancellation. Consumed by the
+/// <c>BookingSaga</c> which releases the wallet reservation (B2B) and voids
+/// the PNR, then transitions to the Cancelled terminal state.
+///
+/// D-39 — post-ticket voids are refused at the controller with 409 (manual
+/// reconciliation in Phase 6), so the saga's VoidRequested activity only
+/// needs to fire in the pre-ticket states (PnrCreated, WalletReserving,
+/// WalletReserved, Authorizing, PaymentAuthorized).
+/// </summary>
+public record VoidRequested(
+    Guid BookingId,
+    string RequestedByUserId,
+    string Reason,
+    DateTimeOffset RequestedAt);

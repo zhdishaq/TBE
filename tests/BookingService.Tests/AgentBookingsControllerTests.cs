@@ -225,7 +225,7 @@ public class AgentBookingsControllerTests
         var publish = Substitute.For<IPublishEndpoint>();
         var controller = NewController(db, publish, AgencyIdA, AgentSub, roles: "agent");
 
-        var result = await controller.ListForAgencyAsync(page: 1, size: 20, CancellationToken.None);
+        var result = await controller.ListForAgencyAsync(page: 1, size: 20, client: null, pnr: null, CancellationToken.None);
 
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         var body = ok.Value!;
@@ -242,7 +242,7 @@ public class AgentBookingsControllerTests
         var publish = Substitute.For<IPublishEndpoint>();
         var controller = NewController(db, publish, agencyId: null, sub: AgentSub, roles: "agent");
 
-        var result = await controller.ListForAgencyAsync(page: 1, size: 20, CancellationToken.None);
+        var result = await controller.ListForAgencyAsync(page: 1, size: 20, client: null, pnr: null, CancellationToken.None);
 
         result.Should().BeOfType<UnauthorizedObjectResult>();
     }
@@ -277,5 +277,268 @@ public class AgentBookingsControllerTests
         var result = await controller.GetByIdAsync(crossTenantBookingId, CancellationToken.None);
 
         result.Should().BeOfType<ForbidResult>();
+    }
+
+    // ------------------------------------------------------------------
+    // Plan 05-04 Task 1 — POST /agent/bookings/{id}/void  (B2B-10)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task VoidAsync_returns_403_when_caller_is_not_agent_admin()
+    {
+        await using var db = NewDb();
+        var bookingId = Guid.NewGuid();
+        db.BookingSagaStates.Add(new BookingSagaState
+        {
+            CorrelationId = bookingId,
+            AgencyId = AgencyIdA,
+            UserId = AgentSub,
+            ChannelText = "b2b",
+            BookingReference = "TBE-260520-VOID",
+            ProductType = "flight",
+            Currency = "GBP",
+            PaymentMethod = "wallet",
+            GdsPnr = "ABC123",
+            TicketNumber = null,
+            InitiatedAtUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var publish = Substitute.For<IPublishEndpoint>();
+        var controller = NewController(db, publish, AgencyIdA, AgentSub, roles: "agent");
+
+        var result = await controller.VoidAsync(bookingId, CancellationToken.None);
+
+        result.Should().BeOfType<ForbidResult>();
+        await publish.DidNotReceive().Publish(Arg.Any<TBE.Contracts.Events.VoidRequested>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task VoidAsync_returns_404_when_booking_belongs_to_different_agency()
+    {
+        // Pitfall 10 — cross-tenant void must 404, NEVER 403 (never leak existence).
+        await using var db = NewDb();
+        var crossTenantBookingId = Guid.NewGuid();
+        db.BookingSagaStates.Add(new BookingSagaState
+        {
+            CorrelationId = crossTenantBookingId,
+            AgencyId = AgencyIdB,
+            UserId = "agent-other-tenant",
+            ChannelText = "b2b",
+            BookingReference = "TBE-260520-XTEN",
+            ProductType = "flight",
+            Currency = "GBP",
+            PaymentMethod = "wallet",
+            GdsPnr = "ABC123",
+            InitiatedAtUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var publish = Substitute.For<IPublishEndpoint>();
+        var controller = NewController(db, publish, AgencyIdA, AgentSub, roles: "agent-admin");
+
+        var result = await controller.VoidAsync(crossTenantBookingId, CancellationToken.None);
+
+        result.Should().BeOfType<NotFoundResult>(
+            "Pitfall 10 — cross-tenant voids must 404 (never leak existence)");
+        await publish.DidNotReceive().Publish(Arg.Any<TBE.Contracts.Events.VoidRequested>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task VoidAsync_returns_404_when_booking_does_not_exist()
+    {
+        await using var db = NewDb();
+        var publish = Substitute.For<IPublishEndpoint>();
+        var controller = NewController(db, publish, AgencyIdA, AgentSub, roles: "agent-admin");
+
+        var result = await controller.VoidAsync(Guid.NewGuid(), CancellationToken.None);
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task VoidAsync_returns_409_problem_json_when_booking_already_ticketed_post_ticket()
+    {
+        // D-39 — post-ticket voids are refused with 409 Conflict + RFC 7807
+        // problem+json type "/errors/post-ticket-cancel-unsupported".
+        await using var db = NewDb();
+        var bookingId = Guid.NewGuid();
+        db.BookingSagaStates.Add(new BookingSagaState
+        {
+            CorrelationId = bookingId,
+            AgencyId = AgencyIdA,
+            UserId = AgentSub,
+            ChannelText = "b2b",
+            BookingReference = "TBE-260520-TICKD",
+            ProductType = "flight",
+            Currency = "GBP",
+            PaymentMethod = "wallet",
+            GdsPnr = "ABC123",
+            TicketNumber = "TKT0001234567",              // POST-TICKET → 409
+            InitiatedAtUtc = DateTime.UtcNow.AddHours(-1),
+        });
+        await db.SaveChangesAsync();
+
+        var publish = Substitute.For<IPublishEndpoint>();
+        var controller = NewController(db, publish, AgencyIdA, AgentSub, roles: "agent-admin");
+
+        var result = await controller.VoidAsync(bookingId, CancellationToken.None);
+
+        // ObjectResult with status 409 carrying ProblemDetails + content-type application/problem+json.
+        var obj = result.Should().BeOfType<ObjectResult>().Subject;
+        obj.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+        obj.ContentTypes.Should().Contain("application/problem+json");
+        var problem = obj.Value.Should().BeOfType<Microsoft.AspNetCore.Mvc.ProblemDetails>().Subject;
+        problem.Type.Should().Contain("post-ticket-cancel-unsupported");
+
+        await publish.DidNotReceive().Publish(Arg.Any<TBE.Contracts.Events.VoidRequested>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task VoidAsync_pre_ticket_publishes_VoidRequested_and_returns_202()
+    {
+        // B2B-10 happy path: pre-ticket (no TicketNumber) admin-initiated void.
+        await using var db = NewDb();
+        var bookingId = Guid.NewGuid();
+        db.BookingSagaStates.Add(new BookingSagaState
+        {
+            CorrelationId = bookingId,
+            AgencyId = AgencyIdA,
+            UserId = AgentSub,
+            ChannelText = "b2b",
+            BookingReference = "TBE-260520-VRQ",
+            ProductType = "flight",
+            Currency = "GBP",
+            PaymentMethod = "wallet",
+            GdsPnr = "ABC123",
+            TicketNumber = null,                         // PRE-TICKET
+            InitiatedAtUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var publish = Substitute.For<IPublishEndpoint>();
+        var controller = NewController(db, publish, AgencyIdA, AgentSub, roles: "agent-admin");
+
+        var result = await controller.VoidAsync(bookingId, CancellationToken.None);
+
+        result.Should().BeOfType<AcceptedAtActionResult>();
+        await publish.Received(1).Publish(
+            Arg.Is<TBE.Contracts.Events.VoidRequested>(m =>
+                m.BookingId == bookingId
+                && m.RequestedByUserId == AgentSub),
+            Arg.Any<CancellationToken>());
+    }
+
+    // ------------------------------------------------------------------
+    // Plan 05-04 Task 1 — GET /agent/bookings/me filter + sort extensions
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ListForAgencyAsync_filters_by_client_name_contains_case_insensitive()
+    {
+        await using var db = NewDb();
+        db.BookingSagaStates.Add(new BookingSagaState
+        {
+            CorrelationId = Guid.NewGuid(),
+            AgencyId = AgencyIdA,
+            UserId = AgentSub,
+            ChannelText = "b2b",
+            BookingReference = "TBE-260520-SMITH",
+            ProductType = "flight",
+            Currency = "GBP",
+            PaymentMethod = "wallet",
+            CustomerName = "John Smith",
+            InitiatedAtUtc = DateTime.UtcNow.AddMinutes(-3),
+        });
+        db.BookingSagaStates.Add(new BookingSagaState
+        {
+            CorrelationId = Guid.NewGuid(),
+            AgencyId = AgencyIdA,
+            UserId = AgentSub,
+            ChannelText = "b2b",
+            BookingReference = "TBE-260520-DOE",
+            ProductType = "flight",
+            Currency = "GBP",
+            PaymentMethod = "wallet",
+            CustomerName = "Jane Doe",
+            InitiatedAtUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var publish = Substitute.For<IPublishEndpoint>();
+        var controller = NewController(db, publish, AgencyIdA, AgentSub, roles: "agent");
+
+        var result = await controller.ListForAgencyAsync(
+            page: 1, size: 20, client: "smith", pnr: null, ct: CancellationToken.None);
+
+        var items = ExtractItems(result);
+        items.Should().HaveCount(1, "client=smith filters to the matching client name");
+    }
+
+    [Fact]
+    public async Task ListForAgencyAsync_filters_by_pnr_equals()
+    {
+        await using var db = NewDb();
+        db.BookingSagaStates.Add(new BookingSagaState
+        {
+            CorrelationId = Guid.NewGuid(),
+            AgencyId = AgencyIdA, UserId = AgentSub, ChannelText = "b2b",
+            BookingReference = "TBE-X1", ProductType = "flight",
+            Currency = "GBP", PaymentMethod = "wallet",
+            GdsPnr = "ABC123",
+            InitiatedAtUtc = DateTime.UtcNow,
+        });
+        db.BookingSagaStates.Add(new BookingSagaState
+        {
+            CorrelationId = Guid.NewGuid(),
+            AgencyId = AgencyIdA, UserId = AgentSub, ChannelText = "b2b",
+            BookingReference = "TBE-X2", ProductType = "flight",
+            Currency = "GBP", PaymentMethod = "wallet",
+            GdsPnr = "ZZZ999",
+            InitiatedAtUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var publish = Substitute.For<IPublishEndpoint>();
+        var controller = NewController(db, publish, AgencyIdA, AgentSub, roles: "agent");
+
+        var result = await controller.ListForAgencyAsync(
+            page: 1, size: 20, client: null, pnr: "ABC123", ct: CancellationToken.None);
+
+        var items = ExtractItems(result);
+        items.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task ListForAgencyAsync_clamps_page_size_between_20_and_100()
+    {
+        await using var db = NewDb();
+        var publish = Substitute.For<IPublishEndpoint>();
+        var controller = NewController(db, publish, AgencyIdA, AgentSub, roles: "agent");
+
+        // Oversized page size (200) should clamp to 100. Undersized (5) clamps
+        // to 20. Both must resolve without error and respect the documented bounds.
+        var tooBig = await controller.ListForAgencyAsync(page: 1, size: 200, client: null, pnr: null, ct: CancellationToken.None);
+        var tooSmall = await controller.ListForAgencyAsync(page: 1, size: 5, client: null, pnr: null, ct: CancellationToken.None);
+
+        ExtractSize(tooBig).Should().Be(100);
+        ExtractSize(tooSmall).Should().Be(20);
+    }
+
+    private static System.Collections.Generic.List<object> ExtractItems(IActionResult result)
+    {
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = ok.Value!;
+        var itemsProp = body.GetType().GetProperty("items")!;
+        var items = (System.Collections.IEnumerable)itemsProp.GetValue(body)!;
+        return items.Cast<object>().ToList();
+    }
+
+    private static int ExtractSize(IActionResult result)
+    {
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = ok.Value!;
+        var sizeProp = body.GetType().GetProperty("size")!;
+        return (int)sizeProp.GetValue(body)!;
     }
 }
