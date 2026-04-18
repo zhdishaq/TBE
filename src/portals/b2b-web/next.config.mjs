@@ -45,6 +45,8 @@ const standardCsp = [
 ].join('; ');
 
 const nextConfig = {
+  basePath: '/b2b',
+  output: 'standalone',
   async headers() {
     return [
       {

@@ -377,6 +377,20 @@ services:
     networks:
       - shared-network
 
+  b2c-web:
+    build:
+      context: src/portals/b2c-web
+      dockerfile: Dockerfile
+    networks:
+      - shared-network
+
+  b2b-web:
+    build:
+      context: src/portals/b2b-web
+      dockerfile: Dockerfile
+    networks:
+      - shared-network
+
 # ============================================================
 # Named volumes for data persistence
 # ============================================================
