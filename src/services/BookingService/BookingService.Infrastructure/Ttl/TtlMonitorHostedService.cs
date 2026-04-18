@@ -6,7 +6,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TBE.BookingService.Application.Saga;
 using TBE.BookingService.Application.Ttl;
+using TBE.Contracts.Enums;
 using TBE.Contracts.Events;
+using TBE.Contracts.Messages;
 
 namespace TBE.BookingService.Infrastructure.Ttl;
 
@@ -93,9 +95,31 @@ public sealed class TtlMonitorHostedService : BackgroundService
 
         foreach (var s in due24)
         {
+            // Phase-3 advisory contract — fires for both B2C and B2B so the
+            // existing B2C customer-advisory consumer keeps working unchanged.
             await publish.Publish(
                 new TicketingDeadlineApproaching(s.CorrelationId, "24h", s.TicketingDeadlineUtc, DateTimeOffset.UtcNow),
                 ct);
+
+            // Plan 05-04 Task 1 (B2B-09) — B2B-flavoured contract carrying
+            // AgencyId + ClientName so the dedicated consumer can fan out
+            // the email to the agency's agent admins (excluding readonly).
+            // Same DB-save-changes cycle as the Warn24HSent flip below, so
+            // the EF+MassTransit outbox (Plan 03-01) guarantees publish +
+            // flag-flip commit together — crash-safe (T-05-04-07).
+            if (s.Channel == Channel.B2B && s.AgencyId.HasValue)
+            {
+                await publish.Publish(
+                    new TicketingDeadlineWarning(
+                        BookingId: s.CorrelationId,
+                        AgencyId: s.AgencyId.Value,
+                        Pnr: s.GdsPnr ?? string.Empty,
+                        TicketingTimeLimit: s.TicketingDeadlineUtc,
+                        HoursRemaining: Math.Round((decimal)(s.TicketingDeadlineUtc - now).TotalHours, 1),
+                        ClientName: s.CustomerName),
+                    ct);
+            }
+
             s.Warn24HSent = true;
         }
 
@@ -111,6 +135,23 @@ public sealed class TtlMonitorHostedService : BackgroundService
             await publish.Publish(
                 new TicketingDeadlineApproaching(s.CorrelationId, "2h", s.TicketingDeadlineUtc, DateTimeOffset.UtcNow),
                 ct);
+
+            // Plan 05-04 Task 1 (B2B-09) — B2B urgent contract (2h horizon).
+            // Distinct record type from Warning so MassTransit routes to a
+            // different consumer handler with "URGENT:" copy + red styling.
+            if (s.Channel == Channel.B2B && s.AgencyId.HasValue)
+            {
+                await publish.Publish(
+                    new TicketingDeadlineUrgent(
+                        BookingId: s.CorrelationId,
+                        AgencyId: s.AgencyId.Value,
+                        Pnr: s.GdsPnr ?? string.Empty,
+                        TicketingTimeLimit: s.TicketingDeadlineUtc,
+                        HoursRemaining: Math.Round((decimal)(s.TicketingDeadlineUtc - now).TotalHours, 2),
+                        ClientName: s.CustomerName),
+                    ct);
+            }
+
             s.Warn2HSent = true;
         }
 
