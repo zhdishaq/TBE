@@ -11,6 +11,7 @@ using TBE.PaymentService.Application.Consumers;
 using TBE.PaymentService.Application.Stripe;
 using TBE.PaymentService.Application.Wallet;
 using TBE.PaymentService.Infrastructure;
+using TBE.PaymentService.Infrastructure.Keycloak;
 using TBE.PaymentService.Infrastructure.Wallet;
 
 Log.Logger = new LoggerConfiguration()
@@ -34,9 +35,21 @@ try
 
     builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
     builder.Services.Configure<WalletOptions>(builder.Configuration.GetSection("Wallet"));
+    builder.Services.Configure<KeycloakB2BAdminOptions>(
+        builder.Configuration.GetSection("KeycloakB2B"));
     builder.Services.AddSingleton<IStripePaymentGateway, StripePaymentGateway>();
     builder.Services.AddScoped<IWalletRepository, WalletRepository>();
     builder.Services.AddScoped<IWalletTopUpService, WalletTopUpService>();
+
+    // Plan 05-03 Task 2 — low-balance monitor + consumer surface.
+    // Monitor is a BackgroundService; consumer registered with MassTransit below.
+    // TimeProvider.System is injected as a singleton so tests can swap it with
+    // FakeTimeProvider and step cooldowns deterministically.
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddScoped<IAgencyWalletRepository, AgencyWalletRepository>();
+    builder.Services.AddScoped<IWalletLowBalanceEmailSender, WalletLowBalanceEmailSender>();
+    builder.Services.AddHttpClient<IKeycloakB2BAdminClient, KeycloakB2BAdminClient>();
+    builder.Services.AddHostedService<WalletLowBalanceMonitor>();
 
     builder.Services.AddControllers();
 
@@ -82,6 +95,10 @@ try
             x.AddConsumer<WalletReserveConsumer>();
             x.AddConsumer<WalletCommitConsumer>();
             x.AddConsumer<WalletReleaseConsumer>();
+            // Plan 05-03 Task 2 — consumes WalletLowBalanceDetected published by
+            // WalletLowBalanceMonitor; resolves agent-admin recipients via
+            // Keycloak (tbe-b2b realm) and flips LowBalanceEmailSent = 1.
+            x.AddConsumer<WalletLowBalanceConsumer>();
         },
         configureOutbox: x =>
         {
