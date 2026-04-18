@@ -51,7 +51,7 @@ describe('ThresholdDialog', () => {
       qc.setQueryData(['wallet', 'threshold'], { threshold: 750, currency: 'GBP' }),
     );
     await userEvent.click(screen.getByRole('button', { name: /edit threshold/i }));
-    const input = (await screen.findByLabelText(/threshold/i)) as HTMLInputElement;
+    const input = (await screen.findByLabelText(/threshold \(£\)/i)) as HTMLInputElement;
     expect(input.value).toBe('750');
   });
 
@@ -70,7 +70,7 @@ describe('ThresholdDialog', () => {
     const invalidateSpy = vi.spyOn(client, 'invalidateQueries');
 
     await userEvent.click(screen.getByRole('button', { name: /edit threshold/i }));
-    const input = (await screen.findByLabelText(/threshold/i)) as HTMLInputElement;
+    const input = (await screen.findByLabelText(/threshold \(£\)/i)) as HTMLInputElement;
     await userEvent.clear(input);
     await userEvent.type(input, '1000');
     fireEvent.submit(input.closest('form')!);
@@ -101,7 +101,7 @@ describe('ThresholdDialog', () => {
       qc.setQueryData(['wallet', 'threshold'], { threshold: 500, currency: 'GBP' }),
     );
     await userEvent.click(screen.getByRole('button', { name: /edit threshold/i }));
-    const input = (await screen.findByLabelText(/threshold/i)) as HTMLInputElement;
+    const input = (await screen.findByLabelText(/threshold \(£\)/i)) as HTMLInputElement;
     await userEvent.clear(input);
     await userEvent.type(input, '25');
     fireEvent.submit(input.closest('form')!);
