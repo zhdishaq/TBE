@@ -140,6 +140,11 @@ public sealed class WalletControllerTopUpTests : IClassFixture<WalletControllerT
 public sealed class WalletControllerTestFactory : WebApplicationFactory<Program>
 {
     public IWalletTopUpService TopUpService { get; } = Substitute.For<IWalletTopUpService>();
+    // 05-05 Task 3 — B2BWalletController now depends on IAgencyWalletRepository
+    // (for PUT/GET /threshold). We stub it here so the existing top-up-intent
+    // tests continue to resolve the controller via DI even though they don't
+    // exercise the threshold path.
+    public IAgencyWalletRepository AgencyWallets { get; } = Substitute.For<IAgencyWalletRepository>();
 
     protected override IHost CreateHost(IHostBuilder builder)
     {
@@ -165,6 +170,7 @@ public sealed class WalletControllerTestFactory : WebApplicationFactory<Program>
             });
 
             services.AddSingleton(TopUpService);
+            services.AddSingleton(AgencyWallets);
         });
         return base.CreateHost(builder);
     }
