@@ -1,4 +1,4 @@
-// Plan 05-05 Task 2 — PUT /api/wallet/threshold.
+// Plan 05-05 Task 2 — GET + PUT /api/wallet/threshold.
 //
 // T-05-05-03 IDOR mitigation (portal layer): body-supplied `agencyId` is
 // structurally stripped before forwarding. Pitfall 28 backend guard is
@@ -6,12 +6,44 @@
 // Problem+json 400 (below-£50 / above-£10 000) is streamed through with
 // Content-Type preserved so the threshold dialog can render the range
 // error inline.
+//
+// HI-01 fix: sitewide LowBalanceBanner polls GET /api/wallet/threshold to
+// decide when to show the advisory. Without the GET sibling the banner
+// 405s on every non-wallet page. B2BPolicy (any authenticated B2B user)
+// is the upstream gate — readonly agents must be able to see the banner.
 
 import { auth } from '@/lib/auth';
 import { gatewayFetch, UnauthenticatedError } from '@/lib/api-client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+export async function GET(): Promise<Response> {
+  const session = await auth();
+  const agencyId = (session?.user as { agency_id?: string } | undefined)
+    ?.agency_id;
+  if (!session || !agencyId) {
+    return new Response(null, { status: 403 });
+  }
+
+  try {
+    const upstream = await gatewayFetch('/api/b2b/wallet/threshold', {
+      method: 'GET',
+    });
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: {
+        'content-type':
+          upstream.headers.get('content-type') ?? 'application/json',
+      },
+    });
+  } catch (err) {
+    if (err instanceof UnauthenticatedError) {
+      return new Response(null, { status: 401 });
+    }
+    return new Response(null, { status: 502 });
+  }
+}
 
 export async function PUT(req: Request): Promise<Response> {
   const session = await auth();
