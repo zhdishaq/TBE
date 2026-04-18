@@ -159,6 +159,21 @@ public sealed class B2BWalletController : ControllerBase
     }
 
     /// <summary>
+    /// 05-05 Task 3 RED — stub. Implementation lands in GREEN commit: JWT agency_id
+    /// extraction, £50-£10,000 server-side range guard, problem+json on violation,
+    /// delegate to <see cref="IAgencyWalletRepository.SetThresholdAsync"/> (which
+    /// re-arms the low-balance email via hysteresis).
+    /// </summary>
+    [HttpPut("threshold")]
+    [Authorize(Policy = "B2BAdminPolicy")]
+    public Task<IActionResult> UpdateThresholdAsync(
+        [FromBody] UpdateThresholdRequest req,
+        CancellationToken ct)
+    {
+        throw new NotImplementedException("05-05 Task 3 GREEN will implement this.");
+    }
+
+    /// <summary>
     /// Lists wallet ledger rows for the caller's agency. Agent-admin only.
     /// </summary>
     [HttpGet("transactions")]
@@ -203,3 +218,11 @@ public sealed record CreateTopUpIntentResponse(
     string PaymentIntentId,
     decimal Amount,
     string Currency);
+
+/// <summary>
+/// Request body for <c>PUT /api/wallet/threshold</c>. Deliberately omits
+/// <c>agencyId</c> — the controller derives it from the JWT <c>agency_id</c>
+/// claim (Pitfall 28). Any body-supplied agency id is structurally discarded
+/// because this DTO has no such property to bind to.
+/// </summary>
+public sealed record UpdateThresholdRequest(decimal ThresholdAmount, string Currency);
