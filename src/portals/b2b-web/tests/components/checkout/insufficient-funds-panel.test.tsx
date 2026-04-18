@@ -52,4 +52,58 @@ describe('InsufficientFundsPanel', () => {
     // Admin CTA must not appear.
     expect(screen.queryByRole('link', { name: /Top up now/i })).toBeNull();
   });
+
+  // Plan 05-05 Task 5 retrofit — the panel now delegates its non-admin
+  // mailto to the new <RequestTopUpLink/> primitive (T-05-03-09 mitigation).
+  // The admin branch already points at /admin/wallet from the original 05-02
+  // contract; these facts re-assert the contract AFTER the retrofit to
+  // guard the interface shape.
+
+  it('05-05 retrofit: agent-admin branch links to /admin/wallet via "Top up now"', () => {
+    render(
+      <InsufficientFundsPanel
+        gross={1000}
+        balance={300}
+        currency="GBP"
+        roles={['agent-admin']}
+      />,
+    );
+    const link = screen.getByRole('link', { name: /top up now/i });
+    expect(link).toHaveAttribute('href', '/admin/wallet');
+  });
+
+  it('05-05 retrofit: non-admin branch delegates mailto to RequestTopUpLink (no body param, no session material)', () => {
+    render(
+      <InsufficientFundsPanel
+        gross={1000}
+        balance={300}
+        currency="GBP"
+        roles={['agent']}
+        adminEmail="owner@acme.test"
+      />,
+    );
+    const link = screen.getByRole('link', { name: /request top-up/i });
+    const href = link.getAttribute('href') ?? '';
+    expect(href.startsWith('mailto:owner@acme.test')).toBe(true);
+    // T-05-03-09 / T-05-05-02: no body param, no session identifiers cross
+    // into the user's default mail client — subject only.
+    expect(href).not.toMatch(/body=/i);
+    expect(href).not.toMatch(/agency_?id/i);
+    expect(href).not.toMatch(/token/i);
+    expect(href).not.toMatch(/balance/i);
+  });
+
+  it('05-05 retrofit: panel remains role="alert" (urgent/blocking — distinct from passive LowBalanceBanner)', () => {
+    render(
+      <InsufficientFundsPanel
+        gross={1000}
+        balance={300}
+        currency="GBP"
+        roles={['agent']}
+        adminEmail="owner@acme.test"
+      />,
+    );
+    const panel = screen.getByRole('alert');
+    expect(panel).toBeInTheDocument();
+  });
 });
