@@ -109,6 +109,14 @@ try
     // DbContext that the controller injects alongside it.
     builder.Services.AddScoped<IBookingReceiptPdfGenerator, QuestPdfBookingReceiptGenerator>();
 
+    // Plan 05-04 Task 2 (B2B-08) — B2B agency invoice PDF generator (D-43 GROSS-only).
+    // Deviation from plan: the generator lives in BookingService (not
+    // NotificationService / "DocumentService") because BookingSagaState holds all
+    // required fields (BookingReference, AgencyId, CustomerName/Email,
+    // AgencyGrossAmount). A cross-service HTTP contract would only duplicate the
+    // data. Route: GET /api/invoices/{bookingId}.pdf under B2BPolicy.
+    builder.Services.AddScoped<IAgencyInvoicePdfGenerator, QuestPdfAgencyInvoiceGenerator>();
+
     // Plan 04-04 / D-08 — the basket single-PI gateway. A thin bus-command adapter
     // (NullBasketPaymentGateway) is bound by default so tests and local dev run
     // without PaymentService; production wires a real adapter forwarding to the

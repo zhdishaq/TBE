@@ -11,7 +11,17 @@ namespace TBE.BookingService.Tests;
 /// PDF with fare / YQ-YR / tax separation per FLTB-03 (D-15 / CONTEXT).
 /// Uses PdfPig to extract the rendered text so assertions survive QuestPDF's
 /// FlateDecode compression of the content streams.
+///
+/// <para>
+/// <b>Collection("QuestPDF")</b> — QuestPDF's license registration runs in a
+/// static ctor; parallel text extraction across receipt + agency-invoice
+/// generators has produced sporadic PdfPig text-stream races on Windows
+/// (Plan 05-04 Wave B). Grouping the two generator test classes in a single
+/// xUnit collection forces sequential execution and removes the flake without
+/// costing measurable runtime (both fixtures are sub-second).
+/// </para>
 /// </summary>
+[Collection("QuestPDF")]
 public class QuestPdfBookingReceiptGeneratorTests
 {
     [Fact]
