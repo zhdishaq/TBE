@@ -13,6 +13,20 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { VoidBookingButton } from '@/components/bookings/void-booking-button';
 
+// next/navigation's `useRouter()` requires the Next.js app-router context
+// provider which is not mounted by plain React-Testing-Library renders.
+// We stub it with a no-op router so the component can call `.refresh()`.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    refresh: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}));
+
 describe('VoidBookingButton', () => {
   beforeEach(() => {
     // Default fetch mock returns 202 Accepted.
