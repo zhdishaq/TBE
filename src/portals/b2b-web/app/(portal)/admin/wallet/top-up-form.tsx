@@ -146,9 +146,13 @@ function StripeConfirmBlock({
 
   const onConfirm = async () => {
     if (!stripe || !elements) return;
+    // HI-02 — Stripe.js requires an absolute URL. A relative path throws
+    // IntegrationError at confirmPayment time. basePath is '/b2b' per
+    // next.config.mjs, so we prepend origin + basePath.
+    const returnUrl = `${window.location.origin}/b2b/admin/wallet?success=1`;
     await stripe.confirmPayment({
       elements,
-      confirmParams: { return_url: '/admin/wallet?success=1' },
+      confirmParams: { return_url: returnUrl },
     });
   };
 

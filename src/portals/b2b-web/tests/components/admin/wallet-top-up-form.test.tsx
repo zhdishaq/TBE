@@ -31,9 +31,14 @@ vi.mock('@/components/wallet/wallet-payment-element-wrapper', () => ({
 }));
 
 // Stub @stripe/react-stripe-js's useStripe/useElements so the confirm button
-// is enabled in the test.
+// is enabled in the test. Use vi.hoisted so the confirmPayment spy is
+// captured at the same hoist level as the vi.mock factory (HI-02 assertions
+// inspect the call args).
+const { confirmPaymentSpy } = vi.hoisted(() => ({
+  confirmPaymentSpy: vi.fn().mockResolvedValue({}),
+}));
 vi.mock('@stripe/react-stripe-js', () => ({
-  useStripe: () => ({ confirmPayment: vi.fn().mockResolvedValue({}) }),
+  useStripe: () => ({ confirmPayment: confirmPaymentSpy }),
   useElements: () => ({}),
   PaymentElement: () => <div data-testid="payment-element" />,
 }));
@@ -50,6 +55,7 @@ function renderWithClient(ui: React.ReactElement) {
 describe('TopUpForm', () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
+    confirmPaymentSpy.mockClear();
   });
 
   it('zod: submitting £5 shows inline error and does NOT fetch', async () => {
@@ -141,5 +147,56 @@ describe('TopUpForm', () => {
       ).toBeInTheDocument();
     });
     expect(screen.getByText(/requested £5/i)).toBeInTheDocument();
+  });
+
+  // HI-02 — Stripe.js rejects relative return_url with IntegrationError.
+  // Guard that the confirm flow always passes an absolute URL including the
+  // /b2b basePath (see next.config.mjs).
+  it('HI-02: confirmPayment is called with absolute return_url including /b2b basePath', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({
+          clientSecret: 'pi_abs_secret',
+          paymentIntentId: 'pi_abs',
+          amount: 250,
+          currency: 'GBP',
+        }),
+      }),
+    );
+
+    renderWithClient(<TopUpForm />);
+
+    const amount = screen.getByLabelText(/amount/i) as HTMLInputElement;
+    await userEvent.clear(amount);
+    await userEvent.type(amount, '250');
+    fireEvent.submit(amount.closest('form')!);
+
+    // Wait for the Stripe wrapper (phase-2) to mount, then grab the confirm
+    // button inside it. The phase-1 submit button is unmounted once
+    // clientSecret is set (gated by !clientSecret), so scoping into the
+    // wrapper avoids any ambiguity.
+    const wrapper = await screen.findByTestId('stripe-elements');
+    const payBtn = await waitFor(() => {
+      const btn = wrapper.querySelector('button');
+      if (!btn) throw new Error('confirm button not yet rendered');
+      if (btn.hasAttribute('disabled')) throw new Error('confirm button disabled');
+      return btn as HTMLButtonElement;
+    });
+    fireEvent.click(payBtn);
+
+    await waitFor(() => {
+      expect(confirmPaymentSpy).toHaveBeenCalledTimes(1);
+    });
+    const callArgs = confirmPaymentSpy.mock.calls[0][0] as {
+      confirmParams: { return_url: string };
+    };
+    const returnUrl = callArgs.confirmParams.return_url;
+    expect(returnUrl).toMatch(/^https?:\/\//);
+    expect(returnUrl).toContain('/b2b/admin/wallet');
+    expect(returnUrl).toContain('success=1');
   });
 });
