@@ -139,4 +139,38 @@ public class BookingSagaState : SagaStateMachineInstance, ISagaVersion
 
     /// <summary>UTC timestamp when the row flipped to Approved (Plan 06-01 / D-48).</summary>
     public DateTime? CancellationApprovedAt { get; set; }
+
+    // --- Plan 06-02 Task 1 — BO-02 manual booking entry ---
+
+    /// <summary>
+    /// Plan 06-02 / BO-02 — supplier-assigned booking reference (NDC PNR,
+    /// hotel confirmation code, etc.) captured by ops-cs during phone /
+    /// walk-in sales. Nullable for backwards compatibility with B2C / B2B
+    /// rows that predate the column. Duplicate detection within a 24h
+    /// window is enforced in <c>ManualBookingCommand</c>.
+    /// </summary>
+    public string? SupplierReference { get; set; }
+
+    /// <summary>
+    /// Plan 06-02 / BO-02 — free-form JSON blob containing the passenger
+    /// list + itinerary segments captured by the staff wizard. Shape
+    /// matches <c>FLTB-03</c> (<c>passengers: [...], segments: [...]</c>).
+    /// Stored verbatim; consumed by the PDF receipt generator and by the
+    /// unified booking detail view.
+    /// </summary>
+    public string? ItineraryJson { get; set; }
+
+    /// <summary>
+    /// Plan 06-02 / BO-02 — UTC timestamp when the manual booking row
+    /// flipped to Confirmed. For saga-driven (B2C / B2B) rows the
+    /// confirmation is implicit (<c>CurrentState == Confirmed</c>) so
+    /// this column is null; manual rows stamp it at insert time.
+    /// </summary>
+    public DateTime? ConfirmedAtUtc { get; set; }
+
+    /// <summary>
+    /// Plan 06-02 / BO-02 — opaque customer id for walk-in customers who
+    /// have a prior account. Nullable (most walk-ins are anonymous).
+    /// </summary>
+    public Guid? CustomerId { get; set; }
 }
