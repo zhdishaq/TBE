@@ -14,6 +14,14 @@ public class BackofficeDbContext : DbContext
     public DbSet<WalletCreditRequest> WalletCreditRequests => Set<WalletCreditRequest>();
     public DbSet<CancellationRequest> CancellationRequests => Set<CancellationRequest>();
 
+    /// <summary>
+    /// Plan 06-01 Task 7 (BO-01) — cross-schema read model of
+    /// <c>Saga.BookingSagaState</c> owned by BookingService. Backoffice
+    /// staff are authorised to see every agency's bookings per T-6-05,
+    /// so there is intentionally NO agency_id filter on this DbSet.
+    /// </summary>
+    public DbSet<BookingReadRow> BookingReadModel => Set<BookingReadRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
