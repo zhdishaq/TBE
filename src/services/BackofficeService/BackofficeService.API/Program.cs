@@ -44,7 +44,13 @@ try
             builder.Configuration.GetConnectionString("BackofficeDb"),
             sql => sql.EnableRetryOnFailure(maxRetryCount: 3)));
 
-    builder.Services.AddControllers();
+    // AddApplicationPart registers the Infrastructure assembly with MVC so
+    // DlqController + future Phase 6 controllers are discovered without
+    // being in the API project itself (Clean Architecture: API hosts
+    // Program.cs + shared middleware; controllers co-locate with the
+    // DbContext they depend on).
+    builder.Services.AddControllers()
+        .AddApplicationPart(typeof(BackofficeDbContext).Assembly);
 
     // Keycloak JWT (tbe-backoffice realm). Pinned scheme name "Backoffice"
     // so every Phase 6 policy can close Pitfall 4 via AddAuthenticationSchemes.
