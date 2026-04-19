@@ -46,9 +46,31 @@ public sealed class WalletRepository : IWalletRepository
                   WHERE WalletId = @WalletId",
                 new { WalletId = walletId }, tx, cancellationToken: ct));
 
-            if (balance < amount)
+            // Plan 06-04 / CRM-02 / D-61 — look up the agency's configured
+            // credit limit under UPDLOCK+HOLDLOCK on the same transaction
+            // scope so a concurrent PATCH of AgencyWallets.CreditLimit can't
+            // race with the reserve decision (T-6-56 credit-limit bypass
+            // mitigation). A missing row (wallet metadata not yet seeded)
+            // is treated as CreditLimit=0 (no overdraft — safe default).
+            // WalletId == AgencyId (1:1 per AgencyWallet.cs doc).
+            var creditLimit = await conn.ExecuteScalarAsync<decimal?>(new CommandDefinition(
+                @"SELECT CreditLimit
+                  FROM payment.AgencyWallets WITH (UPDLOCK, HOLDLOCK)
+                  WHERE AgencyId = @AgencyId",
+                new { AgencyId = walletId }, tx, cancellationToken: ct)) ?? 0m;
+
+            var available = balance + creditLimit;
+            if (amount > available)
             {
                 await tx.RollbackAsync(ct);
+                // Distinguish the two failure modes so the consumer can
+                // surface different error types:
+                //   * creditLimit == 0 → classic insufficient-funds.
+                //   * creditLimit  > 0 → credit-limit-over-limit (D-61).
+                if (creditLimit > 0m)
+                {
+                    throw new CreditLimitExceededException(walletId, amount, balance, creditLimit);
+                }
                 throw new InsufficientWalletBalanceException(walletId, amount, balance);
             }
 
@@ -85,6 +107,10 @@ public sealed class WalletRepository : IWalletRepository
             return txId;
         }
         catch (InsufficientWalletBalanceException)
+        {
+            throw;
+        }
+        catch (CreditLimitExceededException)
         {
             throw;
         }

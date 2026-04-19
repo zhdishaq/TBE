@@ -32,6 +32,19 @@ public sealed class WalletReserveConsumer(
                 await ctx.Publish(new WalletLowBalance(msg.WalletId, balance, opts.CurrentValue.LowBalanceThreshold, DateTimeOffset.UtcNow));
             }
         }
+        catch (CreditLimitExceededException ex)
+        {
+            // Plan 06-04 / CRM-02 / D-61 — the agency has a configured
+            // CreditLimit > 0 but the reserve would still exceed
+            // (balance + CreditLimit). Surface a distinct reason so the
+            // booking API can map it to /errors/wallet-credit-over-limit
+            // (402 Payment Required) rather than the classic insufficient-
+            // funds path.
+            log.LogInformation(
+                "wallet reserve denied by credit limit wallet={WalletId} attempted={Amount} balance={Balance} limit={Limit} available={Available}",
+                msg.WalletId, ex.AttemptedAmount, ex.Balance, ex.CreditLimit, ex.Available);
+            await ctx.Publish(new WalletReserveFailed(msg.CorrelationId, msg.BookingId, "credit_limit_exceeded"));
+        }
         catch (InsufficientWalletBalanceException ex)
         {
             log.LogInformation("wallet reserve rejected wallet={WalletId} attempted={Amount} available={Available}",

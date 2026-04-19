@@ -25,6 +25,16 @@ public sealed class AgencyWalletMap : IEntityTypeConfiguration<AgencyWallet>
             .IsRequired();
         b.Property(x => x.LowBalanceEmailSent).HasDefaultValue(false).IsRequired();
         b.Property(x => x.LastLowBalanceEmailAtUtc);
+
+        // Plan 06-04 / CRM-02 / D-61 — overdraft allowance. Default 0 so
+        // the 20260604200000_AddAgencyCreditLimit migration is a safe
+        // backfill for existing wallets (no overdraft until ops-finance
+        // explicitly raises it via AgencyCreditLimitController).
+        b.Property(x => x.CreditLimit)
+            .HasColumnType("decimal(18,4)")
+            .HasDefaultValue(0m)
+            .IsRequired();
+
         b.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()").IsRequired();
 
         // UNIQUE on AgencyId so cross-tenant mis-writes are a loud failure mode.

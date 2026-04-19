@@ -30,6 +30,14 @@ public class PaymentDbContext : DbContext
     /// </summary>
     public DbSet<PaymentReconciliationItem> ReconciliationQueue => Set<PaymentReconciliationItem>();
 
+    /// <summary>
+    /// Plan 06-04 / CRM-02 / D-61 / T-6-59 — non-repudiation trail for
+    /// <c>AgencyWallets.CreditLimit</c> changes. One row per
+    /// <c>AgencyCreditLimitController.PATCH</c>; reads are via
+    /// Agency 360 portal (future plan).
+    /// </summary>
+    public DbSet<CreditLimitAuditLogRow> CreditLimitAuditLog => Set<CreditLimitAuditLogRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -42,6 +50,7 @@ public class PaymentDbContext : DbContext
         modelBuilder.ApplyConfiguration(new StripeWebhookEventMap());
         modelBuilder.ApplyConfiguration(new WalletTransactionMap());
         modelBuilder.ApplyConfiguration(new AgencyWalletMap());
+        modelBuilder.ApplyConfiguration(new CreditLimitAuditLogMap());
 
         modelBuilder.Entity<PaymentReconciliationItem>(e =>
         {

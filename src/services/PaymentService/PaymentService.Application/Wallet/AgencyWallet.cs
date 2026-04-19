@@ -41,6 +41,16 @@ public sealed class AgencyWallet
     /// <summary>Last successful low-balance e-mail timestamp (UTC), or <c>null</c> if never sent.</summary>
     public DateTime? LastLowBalanceEmailAtUtc { get; set; }
 
+    /// <summary>
+    /// Plan 06-04 / CRM-02 / D-61 — agent overdraft allowance. Reserves up to
+    /// <c>balance + CreditLimit</c> succeed; anything above fails with
+    /// <c>/errors/wallet-credit-over-limit</c>. Defaults to 0 (no overdraft)
+    /// so the backfilled migration is a no-op for existing wallets.
+    /// Editable only via <c>AgencyCreditLimitController.PATCH</c>
+    /// (BackofficeFinancePolicy + audit-log row + outbox publish).
+    /// </summary>
+    public decimal CreditLimit { get; set; } = 0m;
+
     /// <summary>Last mutation wall-clock (UTC).</summary>
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }
