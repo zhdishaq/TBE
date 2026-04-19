@@ -5,4 +5,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>TBE.CrmService.Application</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\shared\TBE.Contracts\TBE.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\shared\TBE.Common\TBE.Common.csproj" />
+    <PackageReference Include="MassTransit" Version="9.1.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.1" />
+  </ItemGroup>
 </Project>

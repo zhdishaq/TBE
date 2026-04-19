@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Plan 06-04 (CrmService) test scaffold. Hosts RED placeholder tests
+    for CRM-01..05 / COMP-03 / D-57 / D-61. All container-dependent
+    tests are tagged Trait("Category","RedPlaceholder") so CI baseline
+    `dotnet test` filters them out via Category!=RedPlaceholder until
+    the MSSQL + RabbitMQ Testcontainers are wired in the CI image.
+
+    Tests tagged Trait("Category","Phase06") for quick-filter runs.
+    Structural (non-container) tests run in the default category.
+
+    Mirrors tests/TBE.BackofficeService.Tests/TBE.BackofficeService.Tests.csproj
+    package set so the RedPlaceholder → green-live upgrade path is a
+    mechanical removal of the attribute (no package churn).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>TBE.CrmService.Tests</RootNamespace>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>CS8602;CS8604;CS8600;CS8625</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="MassTransit.TestFramework" Version="9.1.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
+    <PackageReference Include="Testcontainers.MsSql" Version="3.10.0" />
+    <PackageReference Include="Testcontainers.RabbitMq" Version="3.10.0" />
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+    <PackageReference Include="FluentAssertions" Version="6.12.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TBE.Tests.Shared\TBE.Tests.Shared.csproj" />
+    <ProjectReference Include="..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\services\CrmService\CrmService.Application\CrmService.Application.csproj" />
+    <ProjectReference Include="..\..\src\services\CrmService\CrmService.Infrastructure\CrmService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\services\CrmService\CrmService.API\CrmService.API.csproj" />
+  </ItemGroup>
+</Project>
