@@ -17,6 +17,13 @@
     <PackageReference Include="Stripe.net" Version="51.0.0" />
     <PackageReference Include="Dapper" Version="2.1.35" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <!--
+      Plan 06-02 Task 3 (BO-06) — ReconciliationJob BackgroundService uses
+      Cronos for "0 2 * * *" daily scheduling (UTC). Hosting abstractions
+      are pulled in for BackgroundService + IServiceScopeFactory.
+    -->
+    <PackageReference Include="Cronos" Version="0.8.4" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />

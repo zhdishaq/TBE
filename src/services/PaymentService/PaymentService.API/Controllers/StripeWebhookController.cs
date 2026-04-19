@@ -93,11 +93,17 @@ public sealed class StripeWebhookController : ControllerBase
             }
         }
 
+        // Plan 06-02 Task 3 (BO-06 / D-55) — persist the FULL Stripe
+        // envelope so the nightly reconciliation job can compare against
+        // the wallet ledger. Processed=false; the typed consumer flips
+        // it to true once handling completes.
         _db.StripeWebhookEvents.Add(new StripeWebhookEvent
         {
             EventId = evt.Id,
             EventType = evt.Type,
-            ReceivedAtUtc = DateTime.UtcNow
+            ReceivedAtUtc = DateTime.UtcNow,
+            RawPayload = json,
+            Processed = false,
         });
 
         var envelope = new StripeWebhookReceived(
