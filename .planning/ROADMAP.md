@@ -155,12 +155,12 @@
 
 **UI hint**: yes
 
-### Plans
+**Plans:** 4 plans
 
-1. **Unified booking management** — backoffice booking list showing all channels (B2C + B2B) with full details, audit log, and status history; staff can cancel or modify a booking with reason logging; `BookingEvents` table is append-only and `DENY UPDATE/DELETE` enforced at DB level; each event stores a complete pricing snapshot and supplier response; failed saga compensations appear in a dead-letter queue view with human-actionable status; staff can requeue or manually resolve failed compensations
-2. **Manual booking entry + supplier contracts** — form to create an offline booking (phone/walk-in sale) without going through the search flow, with supplier reference; supplier contract management for staff to enter negotiated net rates with validity dates and commission percentages; payment reconciliation view matching bookings to payments received and flagging discrepancies
-3. **MIS reporting + financial views** — MIS reports for booking volumes by product, revenue, top agents, and top routes; exportable as CSV/Excel; payment reconciliation view flagging discrepancies between bookings and payments received
-4. **CRM service (event-sourced projections)** — CRM service subscribes to `BookingConfirmed`, `BookingCancelled`, `UserRegistered` events and builds denormalized read models; Customer 360 view (profile, all bookings, contact history); agency management (create agencies, assign agents, set credit limits); booking search by PNR, customer name, email, or booking reference; communication log for staff notes on customer and agency records; upcoming trips view (future bookings filterable by status)
+- [ ] 06-01-PLAN.md — BackofficeService bootstrap + unified booking management: Program.cs with `Backoffice` JWT scheme, BackofficeDbContext (`backoffice` schema), Keycloak `tbe-backoffice` realm + 4 roles (ops-admin/ops-cs/ops-finance/ops-read), YARP routes + portal fork from `ui/starterKit`, BookingEvents append-only with DB-level `DENY UPDATE/DELETE` grants (D-49), 4-eyes staff cancel/modify controllers + D-39 manual wallet credit, DeadLetterQueue `_error` consumer with requeue, BO-01 unified booking list with RBAC filter (BO-01, BO-03, BO-04, BO-05, BO-09, BO-10, COMP-03 prep)
+- [ ] 06-02-PLAN.md — Manual booking + supplier contracts + payment reconciliation: BookingChannel.Manual with Channel server-stamped (Pitfall 28), ManualBookingCommand + portal wizard, SupplierContracts CRUD with soft-delete + portal page, StripeEvents.RawPayload + PaymentReconciliationQueue + nightly BackgroundService job + discrepancy types (OrphanStripeEvent/OrphanWalletRow/AmountDrift/UnprocessedEvent) + controller + portal page (BO-02, BO-06, BO-07)
+- [ ] 06-03-PLAN.md — MIS reporting + D-38 markup CRUD + D-41 commission payout: PricingService markup rule CRUD with hard bounds (FlatAmount £0-500, Percent 0-25%, max 2 active per agency) + MarkupRuleAuditLog + portal page with JSON diff, reporting.MisDailyAggregates table with DST-safe cron (30 02 * * *) + MERGE idempotent upsert + CSV/XLSX exports (multi-sheet Summary+Details+Totals) + ApexCharts two-panel portal page, payment.CommissionAccruals + AgencyMonthlyStatements + WalletTransactions.Kind extended with `CommissionPayout` + monthly Cronos job (`0 4 1-3 * *` business-day-guarded) + 4-eyes approve flow (atomic tx: statement flip + ledger insert + accrual update + outbox publish) + bulk-approve 207 Multi-Status + QuestPDF AgencyMonthlyStatement PDF with NET/Markup/Commission columns (BO-08, D-38 markup CRUD, D-41 commission payout)
+- [ ] 06-04-PLAN.md — CrmService + credit-limit enforcement + GDPR erasure: CrmService bootstrap (Program.cs, CrmDbContext, 5 DbSets across `crm` schema, migrations), 7 MassTransit consumers with InboxState dedup (BookingConfirmed/BookingCancelled/UserRegistered/WalletTopUp/TicketIssued/CustomerCommunicationLogged/CustomerErasureRequested) proving D-51 rebuild-from-zero, 5 controllers (Customers/Agencies/CommunicationLog/UpcomingTrips/Search) with cmdk Ctrl+K global search, CustomerCommunicationLogged/AgencyCreditLimitChanged/CustomerErased/CustomerErasureRequested contracts, payment.AgencyWallets.CreditLimit migration + CreditLimitAuditLog + extended reserve SQL (balance + limit >= amount UPDLOCK+HOLDLOCK) + 402 problem+json on over-limit, AgencyCreditLimitController with 4-eyes, GDPR erasure via typed-confirmation dialog (exact email match client+server) + 3-service NULL-PII fan-out (CRM tombstones + Customer projection NULL; Booking NULLs BookingSagaState PII via ExecuteUpdate; BookingEvents UNTOUCHED per D-49) + SHA-256 EmailHash tombstone dedup, pre-checks (open saga → 409, existing tombstone → 409, typed-email mismatch → 400) (CRM-01, CRM-02, CRM-03, CRM-04, CRM-05, COMP-03)
 
 ### UAT Criteria
 
@@ -208,7 +208,7 @@
 | 3 — Core Flight Booking Saga (B2C) | Real booking completes: PNR → authorize → ticket → capture → email | FLTB-01–10, PAY-01–08, NOTF-01–06, COMP-01–06 | Not started |
 | 4 — B2C Portal (Customer-Facing) | B2C portal launchable; customers search, book, and manage flights + hotels + car | B2C-01–08, HOTB-01–05, CARB-01–03, PKG-01–04 | Not started |
 | 5 — B2B Agent Portal | 5/6 | In Progress|  |
-| 6 — Backoffice & CRM | Operations manages all bookings and finances; CRM driven by booking events | BO-01–10, CRM-01–05 | Not started |
+| 6 — Backoffice & CRM | Operations manages all bookings and finances; CRM driven by booking events | BO-01–10, CRM-01–05, COMP-03 | Planned |
 | 7 — Hardening & Go-Live | Production-ready: load tested, second GDS live, monitoring active | INV-03 (prod), INFRA-06 (prod observability) | Not started |
 
 ---
@@ -227,7 +227,8 @@
 | FLTB-01 to FLTB-10 | Phase 3 |
 | PAY-01 to PAY-08 | Phase 3 |
 | NOTF-01 to NOTF-06 | Phase 3 |
-| COMP-01 to COMP-06 | Phase 3 |
+| COMP-01, COMP-02, COMP-04, COMP-05, COMP-06 | Phase 3 |
+| COMP-03 | Phase 6 (GDPR erasure with CRM/Backoffice surfaces) |
 | B2C-01 to B2C-08 | Phase 4 |
 | HOTB-01 to HOTB-05 | Phase 4 |
 | CARB-01 to CARB-03 | Phase 4 |
@@ -239,4 +240,4 @@
 ---
 
 *Roadmap created: 2026-04-12*
-*Last updated: 2026-04-12 after initial creation*
+*Last updated: 2026-04-19 after Phase 6 plans finalized*
