@@ -25,7 +25,11 @@ const topUpSchema = z.object({
     .min(10, 'Top-up must be between £10 and £50 000')
     .max(50000, 'Top-up must be between £10 and £50 000'),
 });
-type TopUpFormValues = z.infer<typeof topUpSchema>;
+// z.coerce.number() has input=unknown, output=number. Use z.input for
+// useForm's TFieldValues so the resolver's input type aligns; z.output
+// is what handleSubmit receives after coercion.
+type TopUpFormInput = z.input<typeof topUpSchema>;
+type TopUpFormValues = z.output<typeof topUpSchema>;
 
 interface ProblemBody {
   type?: string;
@@ -34,7 +38,7 @@ interface ProblemBody {
 }
 
 export function TopUpForm(): React.ReactElement {
-  const methods = useForm<TopUpFormValues>({
+  const methods = useForm<TopUpFormInput, unknown, TopUpFormValues>({
     resolver: zodResolver(topUpSchema),
     defaultValues: { amount: 0 },
   });
@@ -43,7 +47,11 @@ export function TopUpForm(): React.ReactElement {
   const [apiError, setApiError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const watchedAmount = watch('amount') || 0;
+  // watch returns the pre-coercion input (unknown from z.coerce.number).
+  // Normalise to number for downstream consumers that expect a numeric amount.
+  const rawAmount = watch('amount');
+  const coerced = Number(rawAmount);
+  const watchedAmount = Number.isFinite(coerced) ? coerced : 0;
 
   const onSubmit = handleSubmit(async ({ amount }) => {
     setApiError(null);

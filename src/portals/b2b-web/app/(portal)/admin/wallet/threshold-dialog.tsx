@@ -34,7 +34,11 @@ const thresholdSchema = z.object({
     .min(50, 'Threshold must be between £50 and £10 000')
     .max(10000, 'Threshold must be between £50 and £10 000'),
 });
-type ThresholdFormValues = z.infer<typeof thresholdSchema>;
+// z.coerce.number() has input=unknown, output=number. Use z.input for
+// useForm's TFieldValues so the resolver's input type aligns; z.output
+// is what handleSubmit receives after coercion.
+type ThresholdFormInput = z.input<typeof thresholdSchema>;
+type ThresholdFormValues = z.output<typeof thresholdSchema>;
 
 interface ThresholdCacheEntry {
   threshold: number;
@@ -51,7 +55,7 @@ export function ThresholdDialog(): React.ReactElement {
 
   const [open, setOpen] = useState(false);
 
-  const methods = useForm<ThresholdFormValues>({
+  const methods = useForm<ThresholdFormInput, unknown, ThresholdFormValues>({
     resolver: zodResolver(thresholdSchema),
     defaultValues: { thresholdAmount: cached.threshold },
   });
