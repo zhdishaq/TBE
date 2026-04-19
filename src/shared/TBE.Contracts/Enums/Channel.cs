@@ -12,6 +12,15 @@ namespace TBE.Contracts.Enums;
 /// <c>BookingSagaState.Channel</c> column migration in Plan 05-02. Default
 /// value <c>B2C = 0</c> is intentional — existing rows that predate the
 /// migration default to direct-customer semantics.
+///
+/// <para>
+/// Plan 06-02 Task 1 (BO-02) extends the enum with <see cref="Manual"/> =
+/// 2 for staff-entered phone/walk-in bookings. Manual rows bypass the
+/// saga entirely (<see cref="BookingSagaState.CurrentState"/> stays at
+/// the terminal Confirmed value set by <c>ManualBookingCommand</c>) and
+/// publish no <c>BookingInitiated</c> event, so neither the GDS PNR
+/// consumer nor the payment-authorize consumer ever runs.
+/// </para>
 /// </remarks>
 public enum Channel : int
 {
@@ -20,4 +29,14 @@ public enum Channel : int
 
     /// <summary>Travel-agent booking on behalf of a walk-in customer via the B2B portal.</summary>
     B2B = 1,
+
+    /// <summary>
+    /// Plan 06-02 Task 1 (BO-02) — staff-entered booking for phone or
+    /// walk-in sales. No GDS API is hit (staff supplies the supplier
+    /// reference / PNR directly); no saga runs and no payment
+    /// authorization is performed — the booking is inserted in the
+    /// terminal <c>Confirmed</c> state with the full fare breakdown
+    /// captured from the portal wizard.
+    /// </summary>
+    Manual = 2,
 }

@@ -50,5 +50,12 @@
     -->
     <ProjectReference Include="..\..\src\services\BookingService\BookingService.Application\BookingService.Application.csproj" />
     <ProjectReference Include="..\..\src\services\BookingService\BookingService.Infrastructure\BookingService.Infrastructure.csproj" />
+    <!--
+      Plan 06-02 Task 1 (BO-02) — ManualBookingsController lives in
+      BookingService.API under the "Backoffice" JWT scheme. The test
+      references the API assembly directly to drive the controller in
+      process (no WebApplicationFactory) for deterministic scope safety.
+    -->
+    <ProjectReference Include="..\..\src\services\BookingService\BookingService.API\BookingService.API.csproj" />
   </ItemGroup>
 </Project>
