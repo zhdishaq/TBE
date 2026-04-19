@@ -13,8 +13,8 @@
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:3001/*"],
-      "webOrigins": ["http://localhost:3001"],
+      "redirectUris": ["http://localhost:3001/*", "https://booking.3ha.one/*", "https://*.3ha.one/*"],
+      "webOrigins": ["http://localhost:3001", "https://booking.3ha.one", "https://*.3ha.one"],
       "protocol": "openid-connect"
     },
     {

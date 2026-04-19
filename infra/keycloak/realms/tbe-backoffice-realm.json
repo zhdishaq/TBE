@@ -37,12 +37,15 @@
       "directAccessGrantsEnabled": false,
       "redirectUris": [
         "http://localhost:3002/backoffice/api/auth/callback/*",
-        "http://localhost:3002/backoffice/*"
+        "http://localhost:3002/backoffice/*",
+        "https://booking.3ha.one/backoffice/api/auth/callback/*",
+        "https://booking.3ha.one/backoffice/*",
+        "https://*.3ha.one/*"
       ],
-      "webOrigins": ["http://localhost:3002"],
+      "webOrigins": ["http://localhost:3002", "https://booking.3ha.one", "https://*.3ha.one"],
       "protocol": "openid-connect",
       "attributes": {
-        "post.logout.redirect.uris": "http://localhost:3002/backoffice/*"
+        "post.logout.redirect.uris": "http://localhost:3002/backoffice/*##https://booking.3ha.one/backoffice/*"
       },
       "protocolMappers": [
         {
