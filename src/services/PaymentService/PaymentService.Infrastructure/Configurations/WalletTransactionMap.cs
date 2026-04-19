@@ -20,6 +20,12 @@ public sealed class WalletTransactionMap : IEntityTypeConfiguration<WalletTransa
         b.Property(x => x.Currency).HasColumnType("char(3)").IsRequired();
         b.Property(x => x.IdempotencyKey).HasMaxLength(100).IsRequired();
         b.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+
+        // D-39 / Plan 06-01 Task 6 — audit columns for ManualCredit +
+        // (future) CommissionPayout rows. Both NULL for system entries.
+        b.Property(x => x.ApprovedBy).HasMaxLength(128);
+        b.Property(x => x.ApprovalNotes).HasMaxLength(500);
+
         b.HasIndex(x => x.IdempotencyKey).IsUnique();
         b.HasIndex(x => new { x.WalletId, x.CreatedAtUtc });
     }

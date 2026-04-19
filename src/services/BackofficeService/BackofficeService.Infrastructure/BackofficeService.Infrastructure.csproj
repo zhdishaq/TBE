@@ -15,6 +15,17 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BackofficeService.Application\BackofficeService.Application.csproj" />
+    <!--
+      Plan 06-01 Task 6 — StaffBookingActionsController + WalletCreditRequestsController
+      publish BackofficeEvents (BookingCancellationApproved, WalletCreditApproved)
+      via IPublishEndpoint, so TBE.Contracts must be visible to this project.
+      Plan 06-01 Task 7 — BookingsController reads dbo.BookingEvents; the writer
+      interface lives in BookingService.Application (namespace-preserved per
+      Task 5 guard test).
+    -->
+    <ProjectReference Include="..\..\..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\..\src\services\BookingService\BookingService.Application\BookingService.Application.csproj" />
+    <ProjectReference Include="..\..\..\..\src\services\BookingService\BookingService.Infrastructure\BookingService.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.1">
       <PrivateAssets>all</PrivateAssets>

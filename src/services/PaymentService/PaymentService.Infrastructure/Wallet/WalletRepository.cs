@@ -158,6 +158,64 @@ public sealed class WalletRepository : IWalletRepository
             new { WalletId = walletId }, cancellationToken: ct));
     }
 
+    /// <summary>
+    /// D-39 / Plan 06-01 Task 6 — sole writer of <c>ManualCredit</c> ledger
+    /// entries. Called by <c>WalletCreditApprovedConsumer</c>. Idempotent
+    /// via the unique index on <c>IdempotencyKey</c>: a redelivery of the
+    /// same <c>WalletCreditApproved</c> event converts to an infolog line
+    /// and returns the existing TxId — the wallet is never double-credited
+    /// even if RabbitMQ redelivers. MassTransit's InboxState dedup on the
+    /// consumer side is the first line of defence; this unique constraint
+    /// is the belt-and-braces fallback if the outbox is ever bypassed.
+    /// </summary>
+    public async Task<Guid> ManualCreditAsync(
+        Guid walletId,
+        decimal amount,
+        string currency,
+        string idempotencyKey,
+        Guid? linkedBookingId,
+        string approvedBy,
+        string approvalNotes,
+        CancellationToken ct)
+    {
+        await using var conn = new SqlConnection(_connectionString);
+        await conn.OpenAsync(ct);
+        var txId = Guid.NewGuid();
+        try
+        {
+            await conn.ExecuteAsync(new CommandDefinition(
+                @"INSERT INTO payment.WalletTransactions
+                     (TxId, WalletId, BookingId, EntryType, Amount, Currency,
+                      IdempotencyKey, ApprovedBy, ApprovalNotes, CreatedAtUtc)
+                   VALUES
+                     (@TxId, @WalletId, @BookingId, @EntryType, @Amount, @Currency,
+                      @IdemKey, @ApprovedBy, @ApprovalNotes, SYSUTCDATETIME())",
+                new
+                {
+                    TxId = txId,
+                    WalletId = walletId,
+                    BookingId = linkedBookingId,
+                    EntryType = (byte)WalletEntryType.ManualCredit,
+                    Amount = amount,
+                    Currency = currency,
+                    IdemKey = idempotencyKey,
+                    ApprovedBy = approvedBy,
+                    ApprovalNotes = approvalNotes,
+                }, cancellationToken: ct));
+            return txId;
+        }
+        catch (SqlException ex) when (IsUniqueViolation(ex))
+        {
+            var existing = await conn.ExecuteScalarAsync<Guid>(new CommandDefinition(
+                "SELECT TxId FROM payment.WalletTransactions WHERE IdempotencyKey = @IdemKey",
+                new { IdemKey = idempotencyKey }, cancellationToken: ct));
+            _log.LogInformation(
+                "manual-credit replay suppressed idemKey={IdemKey} txId={TxId}",
+                idempotencyKey, existing);
+            return existing;
+        }
+    }
+
     public async Task<IReadOnlyList<WalletTransactionDto>> ListAsync(
         Guid walletId, DateTimeOffset? from, DateTimeOffset? to, int page, int size, CancellationToken ct)
     {
