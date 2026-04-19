@@ -16,6 +16,9 @@ public class PricingDbContext : DbContext
     /// <summary>Plan 05-02 / D-36 — per-agency markup rules (max 2 active rows per agency).</summary>
     public DbSet<AgencyMarkupRule> AgencyMarkupRules => Set<AgencyMarkupRule>();
 
+    /// <summary>Plan 06-03 / D-52 — immutable audit trail for every AgencyMarkupRule mutation.</summary>
+    public DbSet<MarkupRuleAuditLogRow> MarkupRuleAuditLog => Set<MarkupRuleAuditLogRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -60,6 +63,37 @@ public class PricingDbContext : DbContext
                 .IsUnique()
                 .HasDatabaseName("IX_AgencyMarkupRules_Active")
                 .HasFilter("[IsActive] = 1");
+        });
+
+        // Plan 06-03 / D-52: immutable audit trail for AgencyMarkupRules mutations.
+        // CHECK constraint mirrors the migration — code-level change without a
+        // matching migration drop/recreate is the only path that could widen the
+        // Action enum, so the guard is redundant-but-defensive.
+        modelBuilder.Entity<MarkupRuleAuditLogRow>(b =>
+        {
+            b.ToTable("MarkupRuleAuditLog", "pricing", t =>
+            {
+                t.HasCheckConstraint(
+                    "CK_MarkupRuleAuditLog_Action",
+                    "[Action] IN ('Created','Updated','Deactivated','Deleted')");
+            });
+            b.HasKey(r => r.Id);
+            b.Property(r => r.Id).ValueGeneratedOnAdd();
+            b.Property(r => r.Action).IsRequired().HasMaxLength(32);
+            b.Property(r => r.Actor).IsRequired().HasMaxLength(128);
+            b.Property(r => r.Reason).IsRequired().HasMaxLength(500);
+            b.Property(r => r.BeforeJson).HasColumnType("nvarchar(max)");
+            b.Property(r => r.AfterJson).HasColumnType("nvarchar(max)");
+            b.Property(r => r.ChangedAt).HasColumnType("datetime2").IsRequired();
+            b.HasIndex(r => new { r.AgencyId, r.ChangedAt })
+                .IsDescending(false, true)
+                .HasDatabaseName("IX_MarkupRuleAuditLog_AgencyId_ChangedAt");
+            b.HasIndex(r => new { r.RuleId, r.ChangedAt })
+                .IsDescending(false, true)
+                .HasDatabaseName("IX_MarkupRuleAuditLog_RuleId_ChangedAt");
+            b.HasIndex(r => new { r.Actor, r.ChangedAt })
+                .IsDescending(false, true)
+                .HasDatabaseName("IX_MarkupRuleAuditLog_Actor_ChangedAt");
         });
     }
 }
