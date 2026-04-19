@@ -18,7 +18,8 @@ public static class MassTransitServiceExtensions
         this IServiceCollection services,
         IConfiguration configuration,
         Action<IBusRegistrationConfigurator>? configureConsumers = null,
-        Action<IBusRegistrationConfigurator>? configureOutbox = null)
+        Action<IBusRegistrationConfigurator>? configureOutbox = null,
+        Action<IBusRegistrationContext, IRabbitMqBusFactoryConfigurator>? configureBus = null)
     {
         services.AddMassTransit(x =>
         {
@@ -38,6 +39,11 @@ public static class MassTransitServiceExtensions
                         h.Username(configuration["RabbitMQ:Username"] ?? "guest");
                         h.Password(configuration["RabbitMQ:Password"] ?? "guest");
                     });
+
+                // Plan 06-01 — allow callers to register explicit receive
+                // endpoints (used by BackofficeService to bind ErrorQueueConsumer
+                // to the 10 known _error queues) BEFORE ConfigureEndpoints runs.
+                configureBus?.Invoke(context, cfg);
 
                 cfg.ConfigureEndpoints(context);
             });
