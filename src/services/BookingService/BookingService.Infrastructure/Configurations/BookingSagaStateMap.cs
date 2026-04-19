@@ -62,9 +62,19 @@ public class BookingSagaStateMap : IEntityTypeConfiguration<BookingSagaState>
         b.Property(x => x.CancellationRequestedBy).HasMaxLength(128);
         b.Property(x => x.CancellationApprovedBy).HasMaxLength(128);
 
+        // Plan 06-02 Task 1 — BO-02 manual booking entry columns.
+        b.Property(x => x.SupplierReference).HasMaxLength(128);
+        b.Property(x => x.ItineraryJson); // nvarchar(max) — no length cap
+
         b.HasIndex(x => x.TicketingDeadlineUtc);
         // D-34 — agency-wide booking list query hits this index.
         b.HasIndex(x => x.AgencyId).HasDatabaseName("IX_BookingSagaState_AgencyId");
         b.HasIndex(x => x.Channel).HasDatabaseName("IX_BookingSagaState_Channel");
+
+        // Plan 06-02 Task 1 (BO-02) — filtered index supports the 24h
+        // duplicate-SupplierReference check in ManualBookingCommand.
+        b.HasIndex(x => new { x.SupplierReference, x.InitiatedAtUtc })
+            .HasDatabaseName("IX_BookingSagaState_SupplierReference_InitiatedAt")
+            .HasFilter("[SupplierReference] IS NOT NULL");
     }
 }
