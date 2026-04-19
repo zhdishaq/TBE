@@ -42,5 +42,13 @@
     <ProjectReference Include="..\..\src\services\BackofficeService\BackofficeService.Application\BackofficeService.Application.csproj" />
     <ProjectReference Include="..\..\src\services\BackofficeService\BackofficeService.Infrastructure\BackofficeService.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\services\BackofficeService\BackofficeService.API\BackofficeService.API.csproj" />
+    <!--
+      Plan 06-01 Task 5 (BO-04 / BO-05 / D-49 / D-50) — BookingEvents
+      append-only append-only table + writer + observer live in the
+      BookingService stack; tests validate migration structure and writer
+      contract via reflection + EF InMemory.
+    -->
+    <ProjectReference Include="..\..\src\services\BookingService\BookingService.Application\BookingService.Application.csproj" />
+    <ProjectReference Include="..\..\src\services\BookingService\BookingService.Infrastructure\BookingService.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
