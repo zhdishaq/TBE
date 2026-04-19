@@ -111,4 +111,32 @@ public class BookingSagaState : SagaStateMachineInstance, ISagaVersion
 
     /// <summary>Set by the 03-03 TTL monitor when the 2-hour pre-deadline warning is sent.</summary>
     public bool Warn2HSent { get; set; }
+
+    // --- Plan 06-01 Task 5 — BO-03 staff cancel/modify metadata ---
+
+    /// <summary>
+    /// True when the row is in, or has been through, the staff-initiated
+    /// cancellation flow. Distinguishes ops-triggered cancellations from
+    /// customer-requested voids (D-48).
+    /// </summary>
+    public bool CancelledByStaff { get; set; }
+
+    /// <summary>
+    /// One of <c>CustomerRequest / SupplierInitiated / FareRuleViolation /
+    /// FraudSuspected / DuplicateBooking / Other</c> — enforced by CHECK
+    /// constraint on the column (migration AddCancellationColumns).
+    /// </summary>
+    public string? CancellationReasonCode { get; set; }
+
+    /// <summary>Free-text cancellation reason (&lt;=500 chars).</summary>
+    public string? CancellationReason { get; set; }
+
+    /// <summary>preferred_username of the first-eye operator that opened the cancellation request.</summary>
+    public string? CancellationRequestedBy { get; set; }
+
+    /// <summary>preferred_username of the second-eye ops-admin that approved the cancellation.</summary>
+    public string? CancellationApprovedBy { get; set; }
+
+    /// <summary>UTC timestamp when the row flipped to Approved (Plan 06-01 / D-48).</summary>
+    public DateTime? CancellationApprovedAt { get; set; }
 }

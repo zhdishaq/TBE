@@ -99,6 +99,12 @@ try
             // WalletLowBalanceMonitor; resolves agent-admin recipients via
             // Keycloak (tbe-b2b realm) and flips LowBalanceEmailSent = 1.
             x.AddConsumer<WalletLowBalanceConsumer>();
+            // Plan 06-01 Task 6 (D-39) — consumes WalletCreditApproved
+            // published by BackofficeService after a 4-eyes approval on
+            // backoffice.WalletCreditRequests; writes a single
+            // payment.WalletTransactions row of Kind=ManualCredit.
+            // Idempotency is MassTransit InboxState + unique IdempotencyKey.
+            x.AddConsumer<WalletCreditApprovedConsumer>();
         },
         configureOutbox: x =>
         {

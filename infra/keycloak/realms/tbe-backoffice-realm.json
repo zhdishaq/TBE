@@ -4,35 +4,147 @@
   "sslRequired": "none",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
-  "accessTokenLifespan": 300,
+  "accessTokenLifespan": 1800,
+  "roles": {
+    "realm": [
+      {
+        "name": "ops-admin",
+        "description": "Plan 06 / D-46 — full backoffice authority. Approves wallet credits (D-39), cancellations (BO-03), DLQ requeue (BO-10), customer erasure. 4-eyes counter-party for ops-cs and ops-finance."
+      },
+      {
+        "name": "ops-cs",
+        "description": "Plan 06 / D-46 — customer-success role. Creates manual bookings (BO-02), opens cancellation requests (BO-03 step 1), reads invoices and communications."
+      },
+      {
+        "name": "ops-finance",
+        "description": "Plan 06 / D-46 — finance role. Opens wallet-credit requests (D-39 step 1), reads Stripe reconciliation (BO-06), exports commission statements (BO-07)."
+      },
+      {
+        "name": "ops-read",
+        "description": "Plan 06 / D-46 — read-only ops role. Dashboards and list pages only; no mutations."
+      }
+    ]
+  },
+  "defaultRoles": ["ops-read"],
   "clients": [
     {
       "clientId": "tbe-backoffice-ui",
+      "name": "TBE Backoffice Portal",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:3002/*"],
+      "redirectUris": [
+        "http://localhost:3002/backoffice/api/auth/callback/*",
+        "http://localhost:3002/backoffice/*"
+      ],
       "webOrigins": ["http://localhost:3002"],
-      "protocol": "openid-connect"
+      "protocol": "openid-connect",
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:3002/backoffice/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "tbe-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "tbe-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
     },
     {
-      "clientId": "tbe-gateway",
+      "clientId": "tbe-backoffice-admin",
+      "name": "TBE Backoffice Admin (service account)",
       "enabled": true,
       "publicClient": false,
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "secret": "${TBE_BACKOFFICE_GATEWAY_CLIENT_SECRET}",
-      "protocol": "openid-connect"
+      "secret": "${TBE_BACKOFFICE_ADMIN_CLIENT_SECRET}",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "tbe-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "tbe-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
-  "roles": {
-    "realm": [
-      { "name": "backoffice-admin", "description": "Full backoffice access" },
-      { "name": "backoffice-operator", "description": "Booking management" },
-      { "name": "finance", "description": "Financial reports and reconciliation" }
-    ]
-  }
+  "users": [
+    {
+      "username": "ops-admin-1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "ops-admin-1@tbe.local",
+      "firstName": "Ops",
+      "lastName": "Admin",
+      "credentials": [
+        { "type": "password", "value": "test1234", "temporary": false }
+      ],
+      "realmRoles": ["ops-admin", "ops-read"]
+    },
+    {
+      "username": "ops-cs-1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "ops-cs-1@tbe.local",
+      "firstName": "Ops",
+      "lastName": "CS",
+      "credentials": [
+        { "type": "password", "value": "test1234", "temporary": false }
+      ],
+      "realmRoles": ["ops-cs", "ops-read"]
+    },
+    {
+      "username": "ops-finance-1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "ops-finance-1@tbe.local",
+      "firstName": "Ops",
+      "lastName": "Finance",
+      "credentials": [
+        { "type": "password", "value": "test1234", "temporary": false }
+      ],
+      "realmRoles": ["ops-finance", "ops-read"]
+    },
+    {
+      "username": "ops-read-1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "ops-read-1@tbe.local",
+      "firstName": "Ops",
+      "lastName": "Read",
+      "credentials": [
+        { "type": "password", "value": "test1234", "temporary": false }
+      ],
+      "realmRoles": ["ops-read"]
+    }
+  ]
 }

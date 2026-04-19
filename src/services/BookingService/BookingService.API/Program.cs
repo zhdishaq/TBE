@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
+using TBE.BookingService.Application;
 using TBE.BookingService.Application.Baskets;
 using TBE.BookingService.Application.Consumers;
 using TBE.BookingService.Application.Consumers.CompensationConsumers;
@@ -41,6 +42,20 @@ try
         options.UseSqlServer(
             builder.Configuration.GetConnectionString("BookingDb"),
             sql => sql.EnableRetryOnFailure(maxRetryCount: 3)));
+
+    // Plan 06-01 Task 5 (BO-04 / BO-05 / D-49 / D-50) — writer-only DbContext
+    // for the append-only dbo.BookingEvents audit table. Distinct connection
+    // string (BookingEventsWriter) that maps to the tbe_booking_app SQL login
+    // so the engine DENY grant rejects UPDATE/DELETE. Falls back to the
+    // primary BookingDb string in dev/test where a separate login is not
+    // provisioned (Testcontainers fixtures use the sa login during apply).
+    builder.Services.AddDbContext<BookingEventsDbContext>(options =>
+        options.UseSqlServer(
+            builder.Configuration.GetConnectionString("BookingEventsWriter")
+                ?? builder.Configuration.GetConnectionString("BookingDb"),
+            sql => sql.EnableRetryOnFailure(maxRetryCount: 3)));
+
+    builder.Services.AddScoped<IBookingEventsWriter, BookingEventsWriter>();
 
     // Dead-letter store (SagaDeadLetterSink depends on ISagaDeadLetterStore)
     builder.Services.AddScoped<ISagaDeadLetterStore, SagaDeadLetterStore>();

@@ -92,17 +92,49 @@ try
                 },
             };
         })
+        // Plan 06-01 Task 3 — audience flipped to "tbe-api" + ValidateAudience=true
+        // (Pitfall 4 pin). The tbe-backoffice realm's tbe-backoffice-ui OIDC
+        // client carries an audience mapper emitting "tbe-api" so every
+        // BackofficeService route refuses a B2B or B2C token at the gateway
+        // edge. Realm_access.roles are projected into flat "roles" claims so
+        // BackofficePolicy (and downstream BackofficeService policies) can
+        // assert via HasClaim("roles", …).
         .AddJwtBearer("Backoffice", options =>
         {
-            options.Authority = $"{keycloakBaseUrl}/realms/tbe-backoffice";
-            options.RequireHttpsMetadata = false;
-            options.Audience = "tbe-gateway";
+            options.Authority = builder.Configuration["Keycloak:Backoffice:Issuer"]
+                ?? $"{keycloakBaseUrl}/realms/tbe-backoffice";
+            options.RequireHttpsMetadata = builder.Environment.IsProduction();
+            options.Audience = "tbe-api";
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
-                ValidIssuer = $"{keycloakBaseUrl}/realms/tbe-backoffice",
-                ValidateAudience = false,
-                ValidateLifetime = true
+                ValidIssuer = builder.Configuration["Keycloak:Backoffice:Issuer"]
+                    ?? $"{keycloakBaseUrl}/realms/tbe-backoffice",
+                ValidateAudience = true,
+                ValidAudience = "tbe-api",
+                ValidateIssuerSigningKey = true,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.FromSeconds(30),
+            };
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = ctx =>
+                {
+                    var realmAccess = ctx.Principal?.FindFirst("realm_access")?.Value;
+                    if (!string.IsNullOrEmpty(realmAccess))
+                    {
+                        using var doc = JsonDocument.Parse(realmAccess);
+                        if (doc.RootElement.TryGetProperty("roles", out var rolesEl))
+                        {
+                            var identity = (ClaimsIdentity)ctx.Principal!.Identity!;
+                            foreach (var role in rolesEl.EnumerateArray())
+                            {
+                                identity.AddClaim(new Claim("roles", role.GetString() ?? string.Empty));
+                            }
+                        }
+                    }
+                    return Task.CompletedTask;
+                },
             };
         });
 

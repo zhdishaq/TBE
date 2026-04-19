@@ -6,12 +6,32 @@
     <RootNamespace>TBE.BackofficeService.Infrastructure</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <!--
+      Infrastructure hosts the EF DbContext, the MassTransit ErrorQueueConsumer,
+      and the DlqController. The API project scans this assembly for controllers
+      via AddControllersAsServices/ApplicationPart auto-discovery.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\BackofficeService.Application\BackofficeService.Application.csproj" />
+    <!--
+      Plan 06-01 Task 6 — StaffBookingActionsController + WalletCreditRequestsController
+      publish BackofficeEvents (BookingCancellationApproved, WalletCreditApproved)
+      via IPublishEndpoint, so TBE.Contracts must be visible to this project.
+      Plan 06-01 Task 7 — BookingsController reads dbo.BookingEvents; the writer
+      interface lives in BookingService.Application (namespace-preserved per
+      Task 5 guard test).
+    -->
+    <ProjectReference Include="..\..\..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\..\src\services\BookingService\BookingService.Application\BookingService.Application.csproj" />
+    <ProjectReference Include="..\..\..\..\src\services\BookingService\BookingService.Infrastructure\BookingService.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="MassTransit" Version="9.1.0" />
     <PackageReference Include="MassTransit.EntityFrameworkCore" Version="9.1.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.12.14" />
   </ItemGroup>

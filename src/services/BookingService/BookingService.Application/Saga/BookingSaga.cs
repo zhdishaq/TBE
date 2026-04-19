@@ -80,6 +80,13 @@ public class BookingSaga : MassTransitStateMachine<BookingSagaState>
     {
         InstanceState(x => x.CurrentState);
 
+        // Plan 06-01 Task 5 (BO-05 / D-50) — wire the BookingEvents state
+        // observer so every TransitionTo writes one dbo.BookingEvents row
+        // via IBookingEventsWriter. Connected here so a new forward state
+        // added in a later plan automatically gets an audit row without a
+        // second edit in SagaDefinition + Program.cs.
+        ConnectStateObserver(new BookingEventsObserver());
+
         Event(() => BookingInitiated, x => x.CorrelateById(m => m.Message.BookingId));
         Event(() => PriceReconfirmed, x => x.CorrelateById(m => m.Message.BookingId));
         Event(() => PnrCreated, x => x.CorrelateById(m => m.Message.BookingId));

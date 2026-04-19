@@ -52,6 +52,16 @@ public class BookingSagaStateMap : IEntityTypeConfiguration<BookingSagaState>
         b.Property(x => x.Warn24HSent).HasDefaultValue(false);
         b.Property(x => x.Warn2HSent).HasDefaultValue(false);
 
+        // Plan 06-01 Task 5 — BO-03 staff cancel/modify metadata. Column
+        // constraints live on the migration (AddCancellationColumns) — EF
+        // Core check constraints are best-effort in 9.0; the SQL CHECK is
+        // authoritative.
+        b.Property(x => x.CancelledByStaff).HasDefaultValue(false);
+        b.Property(x => x.CancellationReasonCode).HasMaxLength(64);
+        b.Property(x => x.CancellationReason).HasMaxLength(500);
+        b.Property(x => x.CancellationRequestedBy).HasMaxLength(128);
+        b.Property(x => x.CancellationApprovedBy).HasMaxLength(128);
+
         b.HasIndex(x => x.TicketingDeadlineUtc);
         // D-34 — agency-wide booking list query hits this index.
         b.HasIndex(x => x.AgencyId).HasDatabaseName("IX_BookingSagaState_AgencyId");

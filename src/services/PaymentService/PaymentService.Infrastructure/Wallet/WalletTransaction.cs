@@ -18,4 +18,18 @@ public sealed class WalletTransaction
     public string IdempotencyKey { get; set; } = default!;
     public DateTime CreatedAtUtc { get; set; }
     public Guid? CorrelatesWithTx { get; set; }
+
+    /// <summary>
+    /// D-39 — for <see cref="WalletEntryType.ManualCredit"/> (and later
+    /// <see cref="WalletEntryType.CommissionPayout"/>) rows, this captures
+    /// the ops-admin who signed off the 4-eyes approval. NULL for system
+    /// entries (Reserve/Commit/Release/TopUp).
+    /// </summary>
+    public string? ApprovedBy { get; set; }
+
+    /// <summary>
+    /// D-39 — audit free-text supplied by the approver on the
+    /// <c>WalletCreditRequests</c> row. NULL for system entries.
+    /// </summary>
+    public string? ApprovalNotes { get; set; }
 }

@@ -7,6 +7,12 @@ namespace TBE.BookingService.Application.Saga;
 /// exponential backoff 3 attempts (2s → 4s → 8s). After exhaustion, the faulted
 /// message surfaces back into the saga's own failure-event handlers which emit
 /// <c>SagaDeadLetterRequested</c> where appropriate (capture path).
+///
+/// Plan 06-01 Task 5 — <see cref="BookingEventsObserver"/> is connected to the
+/// state machine directly in <see cref="BookingSaga"/>'s constructor via
+/// <c>ConnectStateObserver</c>, so every <c>TransitionTo</c> writes a
+/// <c>dbo.BookingEvents</c> row via <see cref="IBookingEventsWriter"/> (BO-05 /
+/// D-50) without additional endpoint-level plumbing here.
 /// </summary>
 public class BookingSagaDefinition : SagaDefinition<BookingSagaState>
 {
