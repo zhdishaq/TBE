@@ -33,5 +33,11 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
+    <!--
+      Plan 06-02 Task 3 (BO-06) — FakeTimeProvider for pinning the
+      reconciliation "today" (24h window boundary + unprocessed-event
+      age threshold) deterministically.
+    -->
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="8.10.0" />
   </ItemGroup>
 </Project>

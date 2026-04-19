@@ -1,7 +1,10 @@
+using System.Security.Claims;
+using System.Text.Json;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Formatting.Compact;
 using TBE.BookingService.Application;
@@ -57,22 +60,101 @@ try
 
     builder.Services.AddScoped<IBookingEventsWriter, BookingEventsWriter>();
 
+    // Plan 06-02 Task 1 (BO-02) — manual booking direct-insert command
+    // (saga-bypass). Consumed by ManualBookingsController under
+    // BackofficeCsPolicy.
+    builder.Services.AddScoped<ManualBookingCommand>();
+
     // Dead-letter store (SagaDeadLetterSink depends on ISagaDeadLetterStore)
     builder.Services.AddScoped<ISagaDeadLetterStore, SagaDeadLetterStore>();
 
-    // JWT Bearer — Keycloak authority. Enforced globally via class-level [Authorize].
+    // JWT Bearer — primary scheme is the tbe-b2b realm for B2B endpoints.
+    // Plan 06-02 Task 1 (BO-02) adds a second named scheme "Backoffice"
+    // pinned to the tbe-backoffice realm so <c>ManualBookingsController</c>
+    // (class-level [Authorize(Policy=..., AuthenticationSchemes="Backoffice")])
+    // validates ops tokens against the correct issuer. Pitfall 4 pin:
+    // every ops policy calls AddAuthenticationSchemes("Backoffice"); a
+    // tbe-b2b token cannot satisfy it even if the roles match.
+    var keycloakBaseUrl = builder.Configuration["Keycloak:BaseUrl"]
+        ?? "http://keycloak:8080";
+    var backofficeIssuer = builder.Configuration["Keycloak:Backoffice:Authority"]
+        ?? $"{keycloakBaseUrl}/realms/tbe-backoffice";
+
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
         {
             o.Authority = builder.Configuration["Keycloak:Authority"];
             o.Audience = builder.Configuration["Keycloak:Audience"];
             o.RequireHttpsMetadata = builder.Environment.IsProduction();
+        })
+        .AddJwtBearer("Backoffice", options =>
+        {
+            options.Authority = backofficeIssuer;
+            options.Audience = "tbe-api";
+            options.RequireHttpsMetadata = builder.Environment.IsProduction();
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = backofficeIssuer,
+                ValidateAudience = true,
+                ValidAudience = "tbe-api",
+                ValidateIssuerSigningKey = true,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.FromSeconds(30),
+            };
+            options.Events = new JwtBearerEvents
+            {
+                // Keycloak nests realm roles inside realm_access.roles — flatten
+                // them into ClaimTypes.Role + "roles" so RequireRole(...) works.
+                OnTokenValidated = ctx =>
+                {
+                    var realmAccess = ctx.Principal?.FindFirst("realm_access")?.Value;
+                    if (!string.IsNullOrEmpty(realmAccess))
+                    {
+                        using var doc = JsonDocument.Parse(realmAccess);
+                        if (doc.RootElement.TryGetProperty("roles", out var rolesEl))
+                        {
+                            var identity = (ClaimsIdentity)ctx.Principal!.Identity!;
+                            foreach (var role in rolesEl.EnumerateArray())
+                            {
+                                var name = role.GetString();
+                                if (!string.IsNullOrEmpty(name))
+                                {
+                                    identity.AddClaim(new Claim(ClaimTypes.Role, name));
+                                    identity.AddClaim(new Claim("roles", name));
+                                }
+                            }
+                        }
+                    }
+                    return Task.CompletedTask;
+                },
+            };
         });
     builder.Services.AddAuthorization(opt =>
     {
         opt.FallbackPolicy = new AuthorizationPolicyBuilder()
             .RequireAuthenticatedUser()
             .Build();
+
+        // Plan 06-02 Task 1 (BO-02) — four ops-* policies pinned to the
+        // "Backoffice" JWT scheme. Duplicated from BackofficeService.API
+        // so BookingService stays self-contained.
+        opt.AddPolicy("BackofficeReadPolicy", p =>
+            p.AddAuthenticationSchemes("Backoffice")
+             .RequireAuthenticatedUser()
+             .RequireRole("ops-read", "ops-cs", "ops-finance", "ops-admin"));
+        opt.AddPolicy("BackofficeCsPolicy", p =>
+            p.AddAuthenticationSchemes("Backoffice")
+             .RequireAuthenticatedUser()
+             .RequireRole("ops-cs", "ops-admin"));
+        opt.AddPolicy("BackofficeFinancePolicy", p =>
+            p.AddAuthenticationSchemes("Backoffice")
+             .RequireAuthenticatedUser()
+             .RequireRole("ops-finance", "ops-admin"));
+        opt.AddPolicy("BackofficeAdminPolicy", p =>
+            p.AddAuthenticationSchemes("Backoffice")
+             .RequireAuthenticatedUser()
+             .RequireRole("ops-admin"));
 
         // Plan 05-02 Task 2 — B2BPolicy gates the /agent/bookings endpoints.
         // Any agent role (agent | agent-admin | agent-readonly) satisfies the

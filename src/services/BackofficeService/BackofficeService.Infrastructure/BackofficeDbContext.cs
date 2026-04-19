@@ -15,6 +15,14 @@ public class BackofficeDbContext : DbContext
     public DbSet<CancellationRequest> CancellationRequests => Set<CancellationRequest>();
 
     /// <summary>
+    /// Plan 06-02 Task 2 (BO-07) — supplier negotiated-rate contracts.
+    /// Soft-deleted rows (IsDeleted=true) are filtered by the controller
+    /// List query, not a global query filter, so that ops-admin can still
+    /// recover / audit them via Get-by-Id if needed.
+    /// </summary>
+    public DbSet<SupplierContract> SupplierContracts => Set<SupplierContract>();
+
+    /// <summary>
     /// Plan 06-01 Task 7 (BO-01) — cross-schema read model of
     /// <c>Saga.BookingSagaState</c> owned by BookingService. Backoffice
     /// staff are authorised to see every agency's bookings per T-6-05,
@@ -82,6 +90,35 @@ public class BackofficeDbContext : DbContext
                 t.HasCheckConstraint(
                     "CK_CancellationRequests_Status",
                     "[Status] IN ('PendingApproval','Approved','Denied','Expired')");
+            });
+        });
+
+        modelBuilder.Entity<SupplierContract>(e =>
+        {
+            e.Property(x => x.NetRate).HasColumnType("decimal(18,4)");
+            e.Property(x => x.CommissionPercent).HasColumnType("decimal(5,2)");
+            e.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
+            e.Property(x => x.IsDeleted).HasDefaultValue(false);
+            // Hot paths: list filtered by ProductType + IsDeleted; secondary
+            // list order-by ValidTo DESC. Composite covers both.
+            e.HasIndex(x => new { x.IsDeleted, x.ProductType, x.ValidTo })
+                .HasDatabaseName("IX_SupplierContracts_IsDeleted_ProductType_ValidTo");
+            e.ToTable(t =>
+            {
+                t.HasCheckConstraint(
+                    "CK_SupplierContracts_ProductType",
+                    "[ProductType] IN ('Flight','Hotel','Car','Package')");
+                t.HasCheckConstraint(
+                    "CK_SupplierContracts_NetRate",
+                    "[NetRate] >= 0");
+                t.HasCheckConstraint(
+                    "CK_SupplierContracts_CommissionPercent",
+                    "[CommissionPercent] >= 0 AND [CommissionPercent] <= 100");
+                // Validity window must be coherent. Enforced at DB layer
+                // so direct SQL tools can't create malformed rows.
+                t.HasCheckConstraint(
+                    "CK_SupplierContracts_Validity",
+                    "[ValidTo] >= [ValidFrom]");
             });
         });
     }

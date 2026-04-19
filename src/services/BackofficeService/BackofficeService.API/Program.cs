@@ -44,6 +44,12 @@ try
             builder.Configuration.GetConnectionString("BackofficeDb"),
             sql => sql.EnableRetryOnFailure(maxRetryCount: 3)));
 
+    // Plan 06-02 Task 2 — SupplierContractsController depends on TimeProvider
+    // for the Upcoming / Active / Expired status chip computation. The
+    // production clock is TimeProvider.System; tests inject a
+    // FakeTimeProvider directly into the controller constructor.
+    builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+
     // AddApplicationPart registers the Infrastructure assembly with MVC so
     // DlqController + future Phase 6 controllers are discovered without
     // being in the API project itself (Clean Architecture: API hosts
