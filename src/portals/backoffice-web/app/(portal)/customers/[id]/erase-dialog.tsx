@@ -173,7 +173,7 @@ export function EraseCustomerDialog({
             <Button
               variant="destructive"
               disabled={!canSubmit}
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.preventDefault();
                 if (canSubmit) void submit();
               }}
