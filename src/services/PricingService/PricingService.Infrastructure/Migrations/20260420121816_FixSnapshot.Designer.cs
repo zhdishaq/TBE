@@ -12,7 +12,7 @@ using TBE.PricingService.Infrastructure;
 namespace TBE.PricingService.Infrastructure.Migrations
 {
     [DbContext(typeof(PricingDbContext))]
-    [Migration("20260420113259_FixSnapshot")]
+    [Migration("20260420121816_FixSnapshot")]
     partial class FixSnapshot
     {
         /// <inheritdoc />
