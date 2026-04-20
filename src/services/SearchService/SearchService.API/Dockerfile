@@ -17,4 +17,5 @@ RUN dotnet publish "SearchService.API.csproj" -c Release -o /app/publish /p:UseA
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+COPY data/iata/airports.dat ./data/iata/airports.dat
 ENTRYPOINT ["dotnet", "SearchService.API.dll"]

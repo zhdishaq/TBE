@@ -43,8 +43,9 @@ try
     // Redis connection for distributed cache (HybridCache L2 + booking tokens)
     builder.Services.AddStackExchangeRedisCache(opts =>
     {
-        opts.Configuration = builder.Configuration.GetConnectionString("Redis")
-            ?? "localhost:6379";
+        opts.Configuration = builder.Configuration["Redis:ConnectionString"]
+            ?? builder.Configuration.GetConnectionString("Redis")
+            ?? "localhost:6378";
     });
 
     // Shared IConnectionMultiplexer — used by IataAirportSeeder and RedisAirportLookup
@@ -54,7 +55,7 @@ try
     {
         var cs = builder.Configuration.GetConnectionString("Redis")
             ?? builder.Configuration["Redis:ConnectionString"]
-            ?? "localhost:6379";
+            ?? "localhost:6378";
         return ConnectionMultiplexer.Connect(cs);
     });
 
