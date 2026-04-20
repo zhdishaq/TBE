@@ -47,7 +47,7 @@ services:
     ports:
       - "6378:6378"
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6378", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -388,6 +388,22 @@ services:
     build:
       context: src/portals/b2b-web
       dockerfile: Dockerfile
+    networks:
+      - shared-network
+
+  backoffice-web:
+    build:
+      context: src/portals/backoffice-web
+      dockerfile: Dockerfile
+    environment:
+      KEYCLOAK_BACKOFFICE_CLIENT_ID: "tbe-backoffice-ui"
+      KEYCLOAK_BACKOFFICE_CLIENT_SECRET: "${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
+      KEYCLOAK_BACKOFFICE_ISSUER: "https://openid.3ha.one/realms/tbe-backoffice"
+      KEYCLOAK_BACKOFFICE_ADMIN_CLIENT_ID: "tbe-backoffice-admin"
+      KEYCLOAK_BACKOFFICE_ADMIN_CLIENT_SECRET: "${KEYCLOAK_BACKOFFICE_ADMIN_CLIENT_SECRET}"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET}"
+      NEXTAUTH_URL: "https://booking.3ha.one"
+      GATEWAY_URL: "http://tbe-gateway:8080"
     networks:
       - shared-network
 
