@@ -53,10 +53,17 @@ try
     // explicitly registered as a singleton for the airports subsystem.)
     builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     {
-        var cs = builder.Configuration.GetConnectionString("Redis")
-            ?? builder.Configuration["Redis:ConnectionString"]
+        var cs = builder.Configuration["Redis:ConnectionString"]
+            ?? builder.Configuration.GetConnectionString("Redis")
             ?? "localhost:6378";
-        return ConnectionMultiplexer.Connect(cs);
+        // AbortOnConnectFail=false: return a disconnected multiplexer instead of
+        // throwing when Redis is temporarily unreachable at startup.
+        // IataAirportSeeder already handles a missing cache gracefully.
+        var options = ConfigurationOptions.Parse(cs);
+        options.AbortOnConnectFail = false;
+        options.ConnectRetry = 3;
+        options.ConnectTimeout = 5000;
+        return ConnectionMultiplexer.Connect(options);
     });
 
     // IATA airport typeahead (CONTEXT D-18). Seeder runs at startup and populates
