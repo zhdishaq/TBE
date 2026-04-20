@@ -76,5 +76,17 @@ public class BookingSagaStateMap : IEntityTypeConfiguration<BookingSagaState>
         b.HasIndex(x => new { x.SupplierReference, x.InitiatedAtUtc })
             .HasDatabaseName("IX_BookingSagaState_SupplierReference_InitiatedAt")
             .HasFilter("[SupplierReference] IS NOT NULL");
+
+        // Plan 06-04 Task 3 (COMP-03 / D-57) — filtered indexes supporting the
+        // GDPR erasure fan-out + portal Customer 360 / Global Search lookups.
+        b.HasIndex(x => x.CustomerId)
+            .HasDatabaseName("IX_BookingSagaState_CustomerId")
+            .HasFilter("[CustomerId] IS NOT NULL");
+        b.HasIndex(x => x.GdsPnr)
+            .HasDatabaseName("IX_BookingSagaState_GdsPnr")
+            .HasFilter("[GdsPnr] IS NOT NULL");
+        b.HasIndex(x => x.CustomerEmail)
+            .HasDatabaseName("IX_BookingSagaState_CustomerEmail")
+            .HasFilter("[CustomerEmail] IS NOT NULL");
     }
 }

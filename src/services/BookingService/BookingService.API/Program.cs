@@ -261,6 +261,9 @@ try
             // the audit note in deferred-items.md flagged that unconsumed events
             // were accumulating on the default exchange.
             x.AddConsumer<TicketingDeadlineConsumer>();
+            // Plan 06-04 Task 3 (COMP-03 / D-57) — BookingService-side GDPR
+            // erasure fan-out. Resolves via TBE.BookingService.Infrastructure.Consumers.
+            x.AddConsumer<CustomerErasureRequestedConsumer>();
         },
         configureOutbox: x =>
         {
