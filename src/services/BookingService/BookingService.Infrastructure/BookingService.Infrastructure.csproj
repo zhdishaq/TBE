@@ -13,7 +13,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="MassTransit.EntityFrameworkCore" Version="9.1.0" />
-    <PackageReference Include="QuestPDF" Version="2026.2.4" />
+    <PackageReference Include="QuestPDF" Version="2024.7.3" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Booking.Saga.Tests" />
