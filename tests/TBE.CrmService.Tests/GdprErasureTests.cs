@@ -46,9 +46,14 @@ public sealed class GdprErasureTests
 
     private static async Task<(ITestHarness Harness, ServiceProvider Provider)> StartAsync()
     {
+        // Capture the database name ONCE so every scope resolves to the
+        // same in-memory store. Without this, each scope gets a fresh
+        // random name and the consumer's writes are invisible to the
+        // assertion scope.
+        var dbName = $"gdpr-tests-{Guid.NewGuid()}";
         var services = new ServiceCollection();
         services.AddDbContext<CrmDbContext>(o =>
-            o.UseInMemoryDatabase($"gdpr-tests-{Guid.NewGuid()}"));
+            o.UseInMemoryDatabase(dbName));
         services.AddLogging();
 
         services.AddMassTransitTestHarness(cfg =>

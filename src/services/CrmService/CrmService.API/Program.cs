@@ -118,14 +118,14 @@ try
         builder.Configuration,
         configureConsumers: x =>
         {
-            // 6 consumers land in this task; the 7th
-            // (CustomerErasureRequestedConsumer) is added in Task 3.
+            // 6 Task-1 consumers + 1 Task-3 consumer (COMP-03 erasure fan-out).
             x.AddConsumer<BookingConfirmedConsumer>();
             x.AddConsumer<BookingCancelledConsumer>();
             x.AddConsumer<TicketIssuedConsumer>();
             x.AddConsumer<UserRegisteredConsumer>();
             x.AddConsumer<WalletTopUpConsumer>();
             x.AddConsumer<CustomerCommunicationLoggedConsumer>();
+            x.AddConsumer<CustomerErasureRequestedConsumer>();
         },
         configureOutbox: x =>
         {
