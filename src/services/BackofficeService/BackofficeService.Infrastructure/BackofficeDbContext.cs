@@ -30,6 +30,23 @@ public class BackofficeDbContext : DbContext
     /// </summary>
     public DbSet<BookingReadRow> BookingReadModel => Set<BookingReadRow>();
 
+    /// <summary>
+    /// Plan 06-04 Task 3 (COMP-03 / D-57) — cross-schema read model of
+    /// <c>crm.Customers</c> owned by CrmService. Used by <c>ErasureController</c>
+    /// to resolve the customer's email for the typed-match + SHA-256 steps.
+    /// Read-only by convention; the CRM consumer owns all mutations.
+    /// </summary>
+    public DbSet<CustomerReadRow> CustomerReadModel => Set<CustomerReadRow>();
+
+    /// <summary>
+    /// Plan 06-04 Task 3 (COMP-03 / D-57) — cross-schema read model of
+    /// <c>crm.CustomerErasureTombstones</c>. Used by <c>ErasureController</c>
+    /// for the "same email already erased" dedup check before publishing
+    /// a new <c>CustomerErasureRequested</c>.
+    /// </summary>
+    public DbSet<CustomerErasureTombstoneReadRow> CustomerErasureTombstoneReadModel
+        => Set<CustomerErasureTombstoneReadRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
