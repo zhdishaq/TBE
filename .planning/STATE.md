@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 06
-last_updated: "2026-04-19T21:17:24.081Z"
+last_updated: "2026-04-20T08:36:48.360Z"
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 27
-  completed_plans: 30
+  completed_plans: 31
   percent: 100
 ---
 
@@ -20,14 +20,14 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** A unified booking platform where both direct customers and travel agents can search real inventory, complete bookings end-to-end, and have those bookings managed through a single backoffice — without switching systems.
 
-**Current focus:** Phase 06 — backoffice-crm
+**Current focus:** Phase 06 — backoffice-crm **All 4 plans shipped; UAT teed up**
 
 ## Current Status
 
 **Milestone:** v1.0 — Full Platform
-**Phase:** 05 — B2B Agent Portal — Plan 05-04 **Complete**: agency invoice PDF (D-43 GROSS-only), post-ticket void gate (D-39 409), TTL deadline email fan-out consumer, D-34 agency-scoped bookings list + dashboard summary, full b2b-web portal surface (/dashboard + /bookings + /bookings/[id] + 5 route-handler proxies + /forbidden) — all under Pitfall 10 / 11 / 14 / 26 / 28 guardrails. Requirements B2B-08 / B2B-09 / B2B-10 closed. No further deferrals.
-**Last action:** Plan 05-04 closed across 7 commits. `5fa8ca3` (RED — Wave A TTL monitor + AgencyDashboardController). `8469e72` (GREEN — Wave A). `77ae647` (Wave A backend scaffolding for agency-scoped bookings + void + filters). `e9b8165` (Wave B — AgencyInvoiceDocument + InvoicesController + PdfPig D-43 negative-grep). `34e3e15` (Wave C — TicketingDeadlineConsumer + IKeycloakB2BAdminClient + LoggerTicketingDeadlineEmailSender). `4491995` (Wave D RED — 22 b2b-web facts across ttl-countdown/pager/void-booking/dashboard). `18b5b77` (Wave D GREEN — portal dashboard + bookings surface + route-handler proxies). 72/72 BookingService.Tests green; 62/62 b2b-web vitest green. 7 auto-fixes documented in 05-04-SUMMARY.md. QuestPDF race fixed via `[Collection("QuestPDF")]`.
-**Last session stop:** 2026-04-18T19:15Z — Plan 05-04 complete. Next: `/gsd-plan` Plan 05-03 Task 3 (`/admin/wallet` portal surface, 13 Next.js files) — still outstanding from a prior wave. After Phase 5, Phase 4 still has plans 04-03 / 04-04 / 04-05 staged (hotel booking, multi-product baskets, mobile E2E).
+**Phase:** 06 — Backoffice & CRM — **All 4 plans shipped.** 06-01 (BO-01/03/04/05/09/10 + D-39 manual wallet credit) complete; 06-02 (BO-02 manual booking + BO-07 supplier contracts + BO-06 payment reconciliation) complete; 06-03 **partial** — only D-52 audit-log data layer scaffolded; BO-08 MIS reporting, D-38 markup CRUD, and D-41 commission payouts all **deferred** to follow-up plans; 06-04 (CrmService + CRM-02 D-61 credit-limit + COMP-03 D-57 GDPR erasure) complete. UAT at `.planning/phases/06-backoffice-crm/06-UAT.md` — 20 tests, 17 pending, 3 blocked-by-deferred.
+**Last action:** Plan 06-04 Task 3 (COMP-03 GDPR erasure) shipped across 7 atomic commits: `ec68977` (RED GdprErasureTests) → `60e6ef9` (CrmService tombstone migration + consumer) → `5a9a7cb` (BookingService PII indexes + erasure consumer — preserves BookingEvents per D-49) → `13dc7ca` (BackofficeService ErasureController with typed-email + open-saga + duplicate-tombstone gates) → `c2ecb03` (portal Customer 360 + Radix AlertDialog typed-confirm) → `026e6b4` (portal agencies/trips/search shells) → `a7f5fac` (SUMMARY.md). GdprErasureTests 4/4 green. 7 auto-fixes documented in 06-04-SUMMARY.md.
+**Last session stop:** 2026-04-20T08:36Z — Phase 06 build phase complete. Next: `/gsd-verify-work 06` to run interactive UAT; then `/gsd-plan-phase --gaps` if issues found, or proceed to Phase 07 via `/gsd-next`. Three deferred items from 06-03 (BO-08 MIS, D-38/52 markup CRUD, D-41 commission payouts) need follow-up plans — candidates for 06-05 or a Phase 7 insert.
 
 ## Phase Progress
 
@@ -38,7 +38,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 | 3 | Core Flight Booking Saga (B2C) | Complete |
 | 4 | B2C Portal (Customer-Facing) | In progress — Wave 2 complete (Plans 00, 01, 02) |
 | 5 | B2B Agent Portal | In progress — 05-00/05-01/05-02/05-04 complete; 05-03 Tasks 1+2 complete (Task 3 `/admin/wallet` portal still deferred) |
-| 6 | Backoffice & CRM | Not started |
+| 6 | Backoffice & CRM | All 4 plans shipped; UAT teed up (06-UAT.md) — 06-03 partial (BO-08/D-38/D-41 deferred) |
 | 7 | Hardening & Go-Live | Not started |
 
 ## Phase 04 Plan Progress

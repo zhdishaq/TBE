@@ -47,7 +47,7 @@ try
     await MigrateAsync<NotificationDbContext>("NotificationDb");
     await MigrateAsync<CrmDbContext>("CrmDb");
     await MigrateAsync<BackofficeDbContext>("BackofficeDb");
-
+ 
     // Stateless services (no DbContext): ensure the database exists via a plain connection
     // Uses EnsureCreated with minimal DbContext for SearchDb, FlightConnectorDb, HotelConnectorDb
     async Task EnsureDbExistsAsync(string connectionStringKey)

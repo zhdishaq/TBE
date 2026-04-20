@@ -9,7 +9,20 @@
       "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs agent-skills gsd-research-synthesizer)",
       "Bash(node __TRACKED_VAR__/.claude/get-shit-done/bin/gsd-tools.cjs agent-skills gsd-roadmapper)",
       "Bash(ls c:/Users/zhdishaq/source/repos/TBE/Directory.*.props)",
-      "Bash(ls c:/Users/zhdishaq/source/repos/TBE/*.props)"
+      "Bash(ls c:/Users/zhdishaq/source/repos/TBE/*.props)",
+      "Bash(git add *)",
+      "Bash(dotnet build *)",
+      "Bash(dotnet clean *)",
+      "Bash(git check-ignore *)",
+      "Bash(dotnet test *)",
+      "Bash(git commit --no-verify -m ' *)",
+      "Bash(xargs grep *)",
+      "Bash(npx tsc *)",
+      "Bash(git commit *)",
+      "Bash(git merge *)",
+      "Bash(git worktree *)",
+      "Bash(git branch *)",
+      "Skill(gsd-verify-work)"
     ]
   }
 }

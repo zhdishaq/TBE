@@ -1,7 +1,7 @@
 {
   "realm": "tbe-b2c",
   "enabled": true,
-  "sslRequired": "none",
+  "sslRequired": "external",
   "registrationAllowed": true,
   "loginWithEmailAllowed": true,
   "accessTokenLifespan": 300,

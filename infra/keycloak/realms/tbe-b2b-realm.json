@@ -1,7 +1,7 @@
 {
   "realm": "tbe-b2b",
   "enabled": true,
-  "sslRequired": "none",
+  "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "accessTokenLifespan": 300,
@@ -15,7 +15,20 @@
       "directAccessGrantsEnabled": false,
       "redirectUris": ["http://localhost:3001/*", "https://booking.3ha.one/*", "https://*.3ha.one/*"],
       "webOrigins": ["http://localhost:3001", "https://booking.3ha.one", "https://*.3ha.one"],
-      "protocol": "openid-connect"
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "tbe-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "tbe-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "tbe-gateway",

@@ -41,7 +41,7 @@ services:
 
   redis:
     image: redis:7.2-alpine
-    command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD}"
+    command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD}" --port 6378
     volumes:
       - redis-data:/data
     ports:
@@ -137,7 +137,7 @@ services:
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
-      Keycloak__BaseUrl: "http://keycloak:8080"
+      Keycloak__BaseUrl: "https://openid.3ha.one"
     depends_on:
       keycloak:
         condition: service_healthy
