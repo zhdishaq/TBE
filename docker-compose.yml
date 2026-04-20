@@ -55,47 +55,37 @@ services:
     networks:
       - shared-network
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.6.0
-    # REMOVED --optimized to allow auto-build on start
-    command: start --import-realm 
-    environment:
-      KC_HEALTH_ENABLED: "true"
-      KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER}"
-      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
-      KC_DB: mssql
-      KC_DB_URL: "jdbc:sqlserver://mssql;databaseName=KeycloakDb;encrypt=false"
-      KC_DB_USERNAME: "${MSSQL_SA_USER}"
-      KC_DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
-      
-      # PROXY SETTINGS
-      KC_PROXY_HEADERS: "xforwarded"
-      
-      # Keep these as is
-      KC_HOSTNAME: "https://openid.3ha.one"
-      KC_HOSTNAME_STRICT: "true"
-      KC_HOSTNAME_STRICT_HTTPS: "true"
-      KC_HTTP_ENABLED: "true"
-      
-      # This ensures the build phase respects the proxy config
-      KC_HTTP_RELATIVE_PATH: "/"
-    volumes:
-      - ./infra/keycloak/realms:/opt/keycloak/data/import
-    ports:
-      - "8080:8080"
-      - "9000:9000"
-    networks:
-      - shared-network
-    
-    #depends_on:
-      # mssql:
-      #   condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '\"status\": \"UP\"'"]
-      interval: 15s
-      timeout: 10s
-      retries: 20
-      start_period: 60s
+  # keycloak is hosted externally at openid.3ha.one — not run in docker compose
+  # keycloak:
+  #   image: quay.io/keycloak/keycloak:26.6.0
+  #   command: start --import-realm
+  #   environment:
+  #     KC_HEALTH_ENABLED: "true"
+  #     KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER}"
+  #     KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
+  #     KC_DB: mssql
+  #     KC_DB_URL: "jdbc:sqlserver://mssql;databaseName=KeycloakDb;encrypt=false"
+  #     KC_DB_USERNAME: "${MSSQL_SA_USER}"
+  #     KC_DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
+  #     KC_PROXY_HEADERS: "xforwarded"
+  #     KC_HOSTNAME: "https://openid.3ha.one"
+  #     KC_HOSTNAME_STRICT: "true"
+  #     KC_HOSTNAME_STRICT_HTTPS: "true"
+  #     KC_HTTP_ENABLED: "true"
+  #     KC_HTTP_RELATIVE_PATH: "/"
+  #   volumes:
+  #     - ./infra/keycloak/realms:/opt/keycloak/data/import
+  #   ports:
+  #     - "8080:8080"
+  #     - "9000:9000"
+  #   networks:
+  #     - shared-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '\"status\": \"UP\"'"]
+  #     interval: 15s
+  #     timeout: 10s
+  #     retries: 20
+  #     start_period: 60s
 
   # ============================================================
   # Wave 1 — Database Migrator (depends on mssql healthy)
@@ -139,14 +129,12 @@ services:
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
       Keycloak__BaseUrl: "https://openid.3ha.one"
     depends_on:
-      keycloak:
-        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
-      db-migrator:
-        condition: service_completed_successfully
+      #db-migrator:
+      #  condition: service_completed_successfully
     ports:
       - "5000:8080"
     networks:
@@ -170,8 +158,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      db-migrator:
-        condition: service_completed_successfully
+      #db-migrator:
+      #  condition: service_completed_successfully
     ports:
       - "6001:8080"
     networks:
@@ -195,8 +183,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      db-migrator:
-        condition: service_completed_successfully
+      #db-migrator:
+      #  condition: service_completed_successfully
     ports:
       - "6002:8080"
     networks:
@@ -220,8 +208,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      db-migrator:
-        condition: service_completed_successfully
+      #db-migrator:
+      #  condition: service_completed_successfully
     ports:
       - "6003:8080"
     networks:
@@ -245,8 +233,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      db-migrator:
-        condition: service_completed_successfully
+      #db-migrator:
+      #  condition: service_completed_successfully
     ports:
       - "6004:8080"
     networks:
@@ -270,8 +258,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      db-migrator:
-        condition: service_completed_successfully
+      #db-migrator:
+      #  condition: service_completed_successfully
+
     ports:
       - "6005:8080"
     networks:
@@ -295,8 +284,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      db-migrator:
-        condition: service_completed_successfully
+      #db-migrator:
+      #  condition: service_completed_successfully
+
     ports:
       - "6006:8080"
     networks:
@@ -320,8 +310,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      db-migrator:
-        condition: service_completed_successfully
+      #db-migrator:
+      #  condition: service_completed_successfully
+
     ports:
       - "6007:8080"
     networks:
@@ -345,8 +336,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      db-migrator:
-        condition: service_completed_successfully
+      #db-migrator:
+      #  condition: service_completed_successfully
     ports:
       - "6008:8080"
     networks:
@@ -370,8 +361,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      db-migrator:
-        condition: service_completed_successfully
+      #db-migrator:
+      #  condition: service_completed_successfully
     ports:
       - "6009:8080"
     networks:
