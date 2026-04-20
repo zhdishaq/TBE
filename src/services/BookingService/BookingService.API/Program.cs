@@ -26,6 +26,8 @@ using TBE.Common.Messaging;
 using TBE.Common.Security;
 using TBE.Common.Telemetry;
 
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(new CompactJsonFormatter())
     .CreateBootstrapLogger();
