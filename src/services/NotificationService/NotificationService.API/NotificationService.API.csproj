@@ -24,6 +24,10 @@
     <PackageReference Include="MassTransit.RabbitMQ" Version="9.1.0" />
     <PackageReference Include="MassTransit.EntityFrameworkCore" Version="9.1.0" />
     <PackageReference Include="SendGrid" Version="9.29.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <None Update="Templates\**\*.cshtml">
