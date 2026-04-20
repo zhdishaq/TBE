@@ -12,16 +12,19 @@ import { hasAnyRole, isOpsRead } from '@/lib/rbac';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Ctx = { params: { id: string } };
-
-export async function GET(_req: Request, { params }: Ctx): Promise<Response> {
+export async function GET(
+  _req: Request,
+  context: { params: Promise<{ id: string }> },
+): Promise<Response> {
   const session = await auth();
   if (!session) return new Response(null, { status: 401 });
   if (!isOpsRead(session)) return new Response(null, { status: 403 });
 
+  const { id } = await context.params;
+
   try {
     const upstream = await gatewayFetch(
-      `/api/backoffice/supplier-contracts/${encodeURIComponent(params.id)}`,
+      `/api/backoffice/supplier-contracts/${encodeURIComponent(id)}`,
       { method: 'GET' },
     );
     return new Response(upstream.body, {
@@ -39,18 +42,22 @@ export async function GET(_req: Request, { params }: Ctx): Promise<Response> {
   }
 }
 
-export async function PUT(req: Request, { params }: Ctx): Promise<Response> {
+export async function PUT(
+  req: Request,
+  context: { params: Promise<{ id: string }> },
+): Promise<Response> {
   const session = await auth();
   if (!session) return new Response(null, { status: 401 });
   if (!hasAnyRole(session, ['ops-finance', 'ops-admin'])) {
     return new Response(null, { status: 403 });
   }
 
+  const { id } = await context.params;
   const body = await req.text();
 
   try {
     const upstream = await gatewayFetch(
-      `/api/backoffice/supplier-contracts/${encodeURIComponent(params.id)}`,
+      `/api/backoffice/supplier-contracts/${encodeURIComponent(id)}`,
       {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
@@ -74,7 +81,7 @@ export async function PUT(req: Request, { params }: Ctx): Promise<Response> {
 
 export async function DELETE(
   _req: Request,
-  { params }: Ctx,
+  context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const session = await auth();
   if (!session) return new Response(null, { status: 401 });
@@ -82,9 +89,11 @@ export async function DELETE(
     return new Response(null, { status: 403 });
   }
 
+  const { id } = await context.params;
+
   try {
     const upstream = await gatewayFetch(
-      `/api/backoffice/supplier-contracts/${encodeURIComponent(params.id)}`,
+      `/api/backoffice/supplier-contracts/${encodeURIComponent(id)}`,
       { method: 'DELETE' },
     );
     return new Response(upstream.body, {

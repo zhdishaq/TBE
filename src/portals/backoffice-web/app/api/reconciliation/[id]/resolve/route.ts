@@ -11,20 +11,22 @@ import { hasAnyRole } from '@/lib/rbac';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Ctx = { params: { id: string } };
-
-export async function POST(req: Request, { params }: Ctx): Promise<Response> {
+export async function POST(
+  req: Request,
+  context: { params: Promise<{ id: string }> },
+): Promise<Response> {
   const session = await auth();
   if (!session) return new Response(null, { status: 401 });
   if (!hasAnyRole(session, ['ops-finance', 'ops-admin'])) {
     return new Response(null, { status: 403 });
   }
 
+  const { id } = await context.params;
   const body = await req.text();
 
   try {
     const upstream = await gatewayFetch(
-      `/api/backoffice/reconciliation/${encodeURIComponent(params.id)}/resolve`,
+      `/api/backoffice/reconciliation/${encodeURIComponent(id)}/resolve`,
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
