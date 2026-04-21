@@ -13,7 +13,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="MassTransit.EntityFrameworkCore" Version="9.1.0" />
+    <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.2.2" />
     <PackageReference Include="StackExchange.Redis" Version="2.12.14" />
     <PackageReference Include="RazorLight" Version="2.3.1" />
     <PackageReference Include="QuestPDF" Version="2026.2.4" />

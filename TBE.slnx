@@ -56,4 +56,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/TBE.Tests.Unit/TBE.Tests.Unit.csproj" />
   </Folder>
+  <Project Path="docker-compose.dcproj">
+    <Build />
+  </Project>
 </Solution>

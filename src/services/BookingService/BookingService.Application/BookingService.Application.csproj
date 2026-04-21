@@ -8,7 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\shared\TBE.Contracts\TBE.Contracts.csproj" />
     <ProjectReference Include="..\..\..\..\src\shared\TBE.Common\TBE.Common.csproj" />
-    <PackageReference Include="MassTransit" Version="9.1.0" />
+    <PackageReference Include="MassTransit" Version="8.2.2" />
     <!-- MassTransit.Analyzers skipped: latest published version (8.5.x) predates MassTransit 9.x
          and is not available at 9.1.0; analyzers are optional developer-experience tooling. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.1" />

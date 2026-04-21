@@ -6,6 +6,6 @@
     <RootNamespace>TBE.BackofficeService.Application</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="MassTransit" Version="9.1.0" />
+    <PackageReference Include="MassTransit" Version="8.2.2" />
   </ItemGroup>
 </Project>
