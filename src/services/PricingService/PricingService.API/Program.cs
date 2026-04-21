@@ -102,13 +102,13 @@ try
 
     var app = builder.Build();
     app.UseSerilogRequestLogging();
-    app.UseAuthentication();
-    app.UseAuthorization();
-
     if (app.Environment.IsDevelopment())
     {
         app.UseTbeSwagger();
     }
+
+    app.UseAuthentication();
+    app.UseAuthorization();
     app.MapHealthChecks("/health").AllowAnonymous();
     app.MapControllers();
     app.Run();

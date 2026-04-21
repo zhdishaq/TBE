@@ -166,13 +166,13 @@ try
     var app = builder.Build();
     app.UseSerilogRequestLogging();
     app.UseRouting();
-    app.UseAuthentication();
-    app.UseAuthorization();
-
     if (app.Environment.IsDevelopment())
     {
         app.UseTbeSwagger();
     }
+
+    app.UseAuthentication();
+    app.UseAuthorization();
     app.MapHealthChecks("/health");
     app.MapControllers();
     app.Run();

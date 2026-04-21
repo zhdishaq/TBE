@@ -302,13 +302,13 @@ try
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();
-    app.UseAuthentication();
-    app.UseAuthorization();
-
     if (app.Environment.IsDevelopment())
     {
         app.UseTbeSwagger();
     }
+
+    app.UseAuthentication();
+    app.UseAuthorization();
 
     app.MapControllers();
     app.MapHealthChecks("/health");
