@@ -9,6 +9,7 @@ obj
 **/obj
 data/*
 !data/iata/airports.dat
+!data/iata/README.md
 infra
 tests
 .env
