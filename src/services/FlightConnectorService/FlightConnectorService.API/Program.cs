@@ -80,6 +80,7 @@ try
     builder.Services.AddSingleton<AesGcmFieldEncryptor>();
 
     builder.Services.AddControllers();
+    builder.Services.AddTbeSwagger("FlightConnectorService");
 
     builder.Services.AddHealthChecks()
         .AddRabbitMQ(
@@ -104,6 +105,11 @@ try
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
     app.UseAuthorization();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseTbeSwagger();
+    }
     app.MapHealthChecks("/health").AllowAnonymous();
     app.MapControllers();
     app.Run();

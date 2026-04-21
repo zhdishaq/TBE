@@ -75,6 +75,7 @@ try
     builder.Services.AddSingleton<AesGcmFieldEncryptor>();
 
     builder.Services.AddControllers();
+    builder.Services.AddTbeSwagger("PricingService");
 
     builder.Services.AddHealthChecks()
         .AddSqlServer(
@@ -103,6 +104,11 @@ try
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
     app.UseAuthorization();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseTbeSwagger();
+    }
     app.MapHealthChecks("/health").AllowAnonymous();
     app.MapControllers();
     app.Run();

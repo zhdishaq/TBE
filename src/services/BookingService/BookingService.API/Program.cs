@@ -240,6 +240,7 @@ try
     builder.Services.AddScoped<IBasketPaymentGateway, NullBasketPaymentGateway>();
 
     builder.Services.AddControllers();
+    builder.Services.AddTbeSwagger("BookingService");
 
     // MassTransit with RabbitMQ + BookingSaga + outbox
     builder.Services.AddTbeMassTransitWithRabbitMq(
@@ -303,6 +304,12 @@ try
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
     app.UseAuthorization();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseTbeSwagger();
+    }
+
     app.MapControllers();
     app.MapHealthChecks("/health");
     app.Run();

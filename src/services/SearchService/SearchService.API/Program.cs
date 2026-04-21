@@ -6,6 +6,7 @@ using StackExchange.Redis;
 using TBE.Common.Messaging;
 using TBE.SearchService.Application.Airports;
 using TBE.SearchService.Application.Cache;
+using TBE.Common.Telemetry;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(new CompactJsonFormatter())
@@ -120,6 +121,7 @@ try
     });
 
     builder.Services.AddResponseCaching();
+    builder.Services.AddTbeSwagger("SearchService");
     builder.Services.AddControllers();
 
     builder.Services.AddHealthChecks()
@@ -145,6 +147,11 @@ try
     app.UseSerilogRequestLogging();
     app.UseResponseCaching();
     app.UseRateLimiter();
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseTbeSwagger();
+    }
+
     app.MapHealthChecks("/health");
     app.MapControllers();
     app.Run();

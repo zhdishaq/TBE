@@ -118,6 +118,8 @@ try
                 o.DuplicateDetectionWindow = TimeSpan.FromMinutes(30);
             });
         });
+    builder.Services.AddControllers();
+    builder.Services.AddTbeSwagger("NotificationService");
 
     // ---- Health checks ----
     builder.Services.AddHealthChecks()
@@ -147,6 +149,11 @@ try
         scope.ServiceProvider.GetRequiredService<NotificationDbContext>().Database.Migrate();
     }
 
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseTbeSwagger();
+    }
+    app.MapControllers();
     app.MapHealthChecks("/health");
     app.Run();
 }

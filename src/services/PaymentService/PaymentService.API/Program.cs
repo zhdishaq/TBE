@@ -57,6 +57,7 @@ try
     builder.Services.AddHostedService<WalletLowBalanceMonitor>();
 
     builder.Services.AddControllers();
+    builder.Services.AddTbeSwagger("PaymentService");
 
     // Plan 06-02 Task 3 (BO-06) — two JWT schemes:
     //  1. Default scheme: tbe-b2b realm (for /api/wallet/* endpoints).
@@ -221,6 +222,11 @@ try
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
     app.UseAuthorization();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseTbeSwagger();
+    }
     app.MapHealthChecks("/health");
     app.MapControllers();
     app.Run();

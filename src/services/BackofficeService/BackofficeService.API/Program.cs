@@ -9,6 +9,7 @@ using Serilog.Formatting.Compact;
 using TBE.BackofficeService.Application.Consumers;
 using TBE.BackofficeService.Infrastructure;
 using TBE.Common.Messaging;
+using TBE.Common.Telemetry;
 
 // Plan 06-01 Task 3 — BackofficeService bootstrap.
 //
@@ -57,6 +58,7 @@ try
     // DbContext they depend on).
     builder.Services.AddControllers()
         .AddApplicationPart(typeof(BackofficeDbContext).Assembly);
+    builder.Services.AddTbeSwagger("BackofficeService");
 
     // Keycloak JWT (tbe-backoffice realm). Pinned scheme name "Backoffice"
     // so every Phase 6 policy can close Pitfall 4 via AddAuthenticationSchemes.
@@ -211,6 +213,11 @@ try
     app.UseRouting();
     app.UseAuthentication();
     app.UseAuthorization();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseTbeSwagger();
+    }
     app.MapHealthChecks("/health");
     app.MapControllers();
     app.Run();

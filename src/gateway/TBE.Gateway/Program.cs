@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Formatting.Compact;
+using TBE.Common.Telemetry;
 
 // Bootstrap logger — before builder is created
 Log.Logger = new LoggerConfiguration()
@@ -170,12 +171,19 @@ try
         .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
     builder.Services.AddHealthChecks();
+    builder.Services.AddTbeSwagger("Gateway");
 
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
     app.UseAuthorization();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseTbeSwagger();
+    }
+
     app.MapReverseProxy();
     app.MapHealthChecks("/health");
 

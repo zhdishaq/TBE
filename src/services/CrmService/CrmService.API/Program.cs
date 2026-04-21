@@ -9,6 +9,7 @@ using Serilog.Formatting.Compact;
 using TBE.Common.Messaging;
 using TBE.CrmService.Infrastructure;
 using TBE.CrmService.Infrastructure.Consumers;
+using TBE.Common.Telemetry;
 
 // Plan 06-04 Task 1 — CrmService bootstrap.
 //
@@ -113,6 +114,7 @@ try
     });
 
     builder.Services.AddControllers();
+    builder.Services.AddTbeSwagger("CrmService");
 
     builder.Services.AddTbeMassTransitWithRabbitMq(
         builder.Configuration,
@@ -166,6 +168,11 @@ try
     app.UseRouting();
     app.UseAuthentication();
     app.UseAuthorization();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseTbeSwagger();
+    }
     app.MapHealthChecks("/health");
     app.MapControllers();
     app.Run();

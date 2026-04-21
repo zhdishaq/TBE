@@ -2,6 +2,7 @@ using Refit;
 using Serilog;
 using Serilog.Formatting.Compact;
 using TBE.Common.Messaging;
+using TBE.Common.Telemetry;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(new CompactJsonFormatter())
@@ -50,6 +51,7 @@ try
         TBE.HotelConnectorService.Application.Car.AmadeusCarProvider>();
 
     builder.Services.AddControllers();
+    builder.Services.AddTbeSwagger("HotelConnectorService");
 
     builder.Services.AddHealthChecks()
         .AddRabbitMQ(
@@ -72,6 +74,11 @@ try
 
     var app = builder.Build();
     app.UseSerilogRequestLogging();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseTbeSwagger();
+    }
     app.MapHealthChecks("/health");
     app.MapControllers();
     app.Run();
