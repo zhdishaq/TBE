@@ -119,6 +119,7 @@ try
         });
     });
 
+    builder.Services.AddResponseCaching();
     builder.Services.AddControllers();
 
     builder.Services.AddHealthChecks()
@@ -142,6 +143,7 @@ try
 
     var app = builder.Build();
     app.UseSerilogRequestLogging();
+    app.UseResponseCaching();
     app.UseRateLimiter();
     app.MapHealthChecks("/health");
     app.MapControllers();
