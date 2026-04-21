@@ -15,6 +15,7 @@ public class SearchController(
     ISearchCacheService cacheService) : ControllerBase
 {
     [HttpPost("flights")]
+    [AllowAnonymous]
     // NOTE: In-process rate limit. Per-replica only. Replace with Redis sliding window before scaling.
     [EnableRateLimiting("gds-rate-limit")]   // sliding window policy — T-02-04-03
     public async Task<IActionResult> SearchFlights(

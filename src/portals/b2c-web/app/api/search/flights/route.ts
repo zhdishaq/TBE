@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   const body = await request.text();
 
   try {
-    const upstream = await gatewayFetch('/search/flights', {
+    const upstream = await gatewayFetch('/api/b2c/search/flights', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body,
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       if (!gatewayUrl) {
         return NextResponse.json({ error: 'GATEWAY_URL not set' }, { status: 503 });
       }
-      const upstream = await fetch(`${gatewayUrl}/search/flights`, {
+      const upstream = await fetch(`${gatewayUrl}/api/b2c/search/flights`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,
