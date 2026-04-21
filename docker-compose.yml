@@ -91,26 +91,26 @@ services:
   # Wave 1 — Database Migrator (depends on mssql healthy)
   # ============================================================
 
-  db-migrator:
-    build:
-      context: .
-      dockerfile: src/tools/TBE.DbMigrator/Dockerfile
-    networks:
-      - shared-network
-    environment:
-      ConnectionStrings__BookingDb: "${BOOKING_DB_CONNECTION}"
-      ConnectionStrings__PaymentDb: "${PAYMENT_DB_CONNECTION}"
-      ConnectionStrings__SearchDb: "${SEARCH_DB_CONNECTION}"
-      ConnectionStrings__PricingDb: "${PRICING_DB_CONNECTION}"
-      ConnectionStrings__NotificationDb: "${NOTIFICATION_DB_CONNECTION}"
-      ConnectionStrings__CrmDb: "${CRM_DB_CONNECTION}"
-      ConnectionStrings__BackofficeDb: "${BACKOFFICE_DB_CONNECTION}"
-      ConnectionStrings__FlightConnectorDb: "${FLIGHT_CONNECTOR_DB_CONNECTION}"
-      ConnectionStrings__HotelConnectorDb: "${HOTEL_CONNECTOR_DB_CONNECTION}"
-    # depends_on:
-    #   mssql:
-    #     condition: service_healthy
-    restart: "no"
+  # db-migrator:
+  #   build:
+  #     context: .
+  #     dockerfile: src/tools/TBE.DbMigrator/Dockerfile
+  #   networks:
+  #     - shared-network
+  #   environment:
+  #     ConnectionStrings__BookingDb: "${BOOKING_DB_CONNECTION}"
+  #     ConnectionStrings__PaymentDb: "${PAYMENT_DB_CONNECTION}"
+  #     ConnectionStrings__SearchDb: "${SEARCH_DB_CONNECTION}"
+  #     ConnectionStrings__PricingDb: "${PRICING_DB_CONNECTION}"
+  #     ConnectionStrings__NotificationDb: "${NOTIFICATION_DB_CONNECTION}"
+  #     ConnectionStrings__CrmDb: "${CRM_DB_CONNECTION}"
+  #     ConnectionStrings__BackofficeDb: "${BACKOFFICE_DB_CONNECTION}"
+  #     ConnectionStrings__FlightConnectorDb: "${FLIGHT_CONNECTOR_DB_CONNECTION}"
+  #     ConnectionStrings__HotelConnectorDb: "${HOTEL_CONNECTOR_DB_CONNECTION}"
+  #   # depends_on:
+  #   #   mssql:
+  #   #     condition: service_healthy
+  #   restart: "no"
 
   # ============================================================
   # Wave 2 — Application Services
@@ -151,13 +151,13 @@ services:
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
-    #depends_on:
-      # mssql:
+    depends_on:
+      #mssql:
       #   condition: service_healthy
-     # rabbitmq:
-     #   condition: service_healthy
-     # redis:
-     #   condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
       #db-migrator:
       #  condition: service_completed_successfully
     ports:
@@ -201,13 +201,13 @@ services:
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
-    #depends_on:
+    depends_on:
       # mssql:
       #   condition: service_healthy
-      # rabbitmq:
-      #   condition: service_healthy
-      # redis:
-      #   condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
       #db-migrator:
       #  condition: service_completed_successfully
     ports:
