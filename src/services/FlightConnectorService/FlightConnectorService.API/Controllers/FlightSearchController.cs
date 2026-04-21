@@ -7,7 +7,7 @@ using TBE.Contracts.Inventory.Models;
 namespace TBE.FlightConnectorService.API.Controllers;
 
 [ApiController]
-[Authorize]
+//[Authorize]
 [Route("flights")]
 public class FlightSearchController(
     IEnumerable<IFlightAvailabilityProvider> providers,
