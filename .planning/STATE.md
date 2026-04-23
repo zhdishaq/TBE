@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 **Last action:** Plan 06-04 Task 3 (COMP-03 GDPR erasure) shipped across 7 atomic commits: `ec68977` (RED GdprErasureTests) → `60e6ef9` (CrmService tombstone migration + consumer) → `5a9a7cb` (BookingService PII indexes + erasure consumer — preserves BookingEvents per D-49) → `13dc7ca` (BackofficeService ErasureController with typed-email + open-saga + duplicate-tombstone gates) → `c2ecb03` (portal Customer 360 + Radix AlertDialog typed-confirm) → `026e6b4` (portal agencies/trips/search shells) → `a7f5fac` (SUMMARY.md). GdprErasureTests 4/4 green. 7 auto-fixes documented in 06-04-SUMMARY.md.
 **Last session stop:** 2026-04-20T08:36Z — Phase 06 build phase complete. Next: `/gsd-verify-work 06` to run interactive UAT; then `/gsd-plan-phase --gaps` if issues found, or proceed to Phase 07 via `/gsd-next`. Three deferred items from 06-03 (BO-08 MIS, D-38/52 markup CRUD, D-41 commission payouts) need follow-up plans — candidates for 06-05 or a Phase 7 insert.
 
-Last activity: 2026-04-23 - Completed quick task 260424-20h: wire services to share Keycloak (openid.3ha.one) + Gateway (booking.3ha.one), runtime values consolidated in docker-compose.yml
+Last activity: 2026-04-23 - Completed quick task 260424-2d9: wired AddTbeOpenTelemetry in the 5 Program.cs files missing the call (SearchService, HotelConnector, Crm, Backoffice, TBE.Gateway) — 10/10 services now emit OTLP traces + metrics through the shared PII/PCI-scrubbing pipeline
 
 ## Phase Progress
 
@@ -213,6 +213,7 @@ After Phase 5, Phase 4 still has plans 04-03 / 04-04 / 04-05 staged (hotel booki
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260424-20h | Wire services to share infra: Keycloak at openid.3ha.one, YARP gateway at booking.3ha.one, runtime values in docker-compose | 2026-04-23 | 7947214 | [260424-20h-wire-services-to-share-infra-keycloak-at](./quick/260424-20h-wire-services-to-share-infra-keycloak-at/) |
+| 260424-2d9 | Complete OTel wiring — add AddTbeOpenTelemetry call to the 5 Program.cs files missing it (SearchService, HotelConnector, Crm, Backoffice, TBE.Gateway) | 2026-04-23 | 8654cfd | [260424-2d9-complete-opentelemetry-wiring-call-addtb](./quick/260424-2d9-complete-opentelemetry-wiring-call-addtb/) |
 
 ## Key Reminders
 
