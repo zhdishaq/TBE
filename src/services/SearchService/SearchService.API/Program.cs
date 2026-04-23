@@ -22,6 +22,9 @@ try
                      .Enrich.FromLogContext()
                      .Enrich.WithProperty("Service", "SearchService"));
 
+    // Shared OTel + PII/PCI scrubbing (COMP-05 / COMP-06).
+    builder.Services.AddTbeOpenTelemetry(builder.Configuration, "SearchService");
+
     // SearchService is Redis-only (no DB) — uses Redis for search result caching
     builder.Services.AddTbeMassTransitWithRabbitMq(builder.Configuration);
 

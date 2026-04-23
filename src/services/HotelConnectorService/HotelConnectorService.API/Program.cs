@@ -18,6 +18,9 @@ try
                      .Enrich.FromLogContext()
                      .Enrich.WithProperty("Service", "HotelConnectorService"));
 
+    // Shared OTel + PII/PCI scrubbing (COMP-05 / COMP-06).
+    builder.Services.AddTbeOpenTelemetry(builder.Configuration, "HotelConnectorService");
+
     // HotelConnectorService is stateless — no DB or outbox
     builder.Services.AddTbeMassTransitWithRabbitMq(builder.Configuration);
 

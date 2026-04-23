@@ -40,6 +40,9 @@ try
                      .Enrich.FromLogContext()
                      .Enrich.WithProperty("Service", "BackofficeService"));
 
+    // Shared OTel + PII/PCI scrubbing (COMP-05 / COMP-06).
+    builder.Services.AddTbeOpenTelemetry(builder.Configuration, "BackofficeService");
+
     builder.Services.AddDbContext<BackofficeDbContext>(options =>
         options.UseSqlServer(
             builder.Configuration.GetConnectionString("BackofficeDb"),

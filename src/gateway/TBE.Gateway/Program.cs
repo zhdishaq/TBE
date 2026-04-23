@@ -21,6 +21,9 @@ try
                      .Enrich.FromLogContext()
                      .Enrich.WithProperty("Service", "TBE.Gateway"));
 
+    // Shared OTel + PII/PCI scrubbing (COMP-05 / COMP-06).
+    builder.Services.AddTbeOpenTelemetry(builder.Configuration, "TBE.Gateway");
+
     var keycloakBaseUrl = builder.Configuration["Keycloak:BaseUrl"]
         ?? "http://keycloak:8080";
 

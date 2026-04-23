@@ -39,6 +39,9 @@ try
                      .Enrich.FromLogContext()
                      .Enrich.WithProperty("Service", "CrmService"));
 
+    // Shared OTel + PII/PCI scrubbing (COMP-05 / COMP-06).
+    builder.Services.AddTbeOpenTelemetry(builder.Configuration, "CrmService");
+
     builder.Services.AddDbContext<CrmDbContext>(options =>
         options.UseSqlServer(
             builder.Configuration.GetConnectionString("CrmDb"),
