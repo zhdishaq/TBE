@@ -3,6 +3,11 @@ services:
   # ============================================================
   # Wave 0 — Infrastructure (no dependencies)
   # ============================================================
+  #
+  # Keycloak is hosted externally at https://openid.3ha.one — NOT run in this compose file.
+  # The gateway's public URL is https://booking.3ha.one (fronted by reverse-proxy / ingress).
+  # All secrets come from .env (never committed). Service-level env blocks below override
+  # values that would otherwise come from each service's appsettings.json.
 
   # mssql:
   #   image: mcr.microsoft.com/mssql/server:2022-latest
@@ -55,37 +60,9 @@ services:
     networks:
       - shared-network
 
-  # keycloak is hosted externally at openid.3ha.one — not run in docker compose
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.6.0
-    command: start --import-realm
-    environment:
-      KC_HEALTH_ENABLED: "true"
-      KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER}"
-      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
-      KC_DB: mssql
-      KC_DB_URL: "jdbc:sqlserver://mssql;databaseName=KeycloakDb;encrypt=false"
-      KC_DB_USERNAME: "${MSSQL_SA_USER}"
-      KC_DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
-      KC_PROXY_HEADERS: "xforwarded"
-      KC_HOSTNAME: "https://openid.3ha.one"
-      KC_HOSTNAME_STRICT: "true"
-      KC_HOSTNAME_STRICT_HTTPS: "true"
-      KC_HTTP_ENABLED: "true"
-      KC_HTTP_RELATIVE_PATH: "/"
-    volumes:
-      - ./infra/keycloak/realms:/opt/keycloak/data/import
-    ports:
-      - "8080:8080"
-      - "9000:9000"
-    networks:
-      - shared-network
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '\"status\": \"UP\"'"]
-      interval: 15s
-      timeout: 10s
-      retries: 20
-      start_period: 60s
+  # keycloak service block removed — hosted externally at https://openid.3ha.one.
+  # If you need a local Keycloak for dev isolation, uncomment the block in git history
+  # (commit docker-compose.yml prior to 260424-20h-wire-services-to-share-infra).
 
   # ============================================================
   # Wave 1 — Database Migrator (depends on mssql healthy)
@@ -114,7 +91,7 @@ services:
 
   # ============================================================
   # Wave 2 — Application Services
-  # (depend on mssql + rabbitmq + redis healthy AND db-migrator completed)
+  # (depend on rabbitmq + redis healthy)
   # ============================================================
 
   tbe-gateway:
@@ -122,19 +99,21 @@ services:
       context: .
       dockerfile: src/gateway/TBE.Gateway/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
-      Keycloak__BaseUrl: "https://openid.3ha.one"
+      Keycloak__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      Keycloak__Authority: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
+      Keycloak__Audience: "tbe-b2c-api"
+      PublicBaseUrl: "${GATEWAY_PUBLIC_URL}"
+      OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
-      #db-migrator:
-      #  condition: service_completed_successfully
     ports:
       - "5000:8080"
     networks:
@@ -145,21 +124,31 @@ services:
       context: .
       dockerfile: src/services/BookingService/BookingService.API/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__BookingDb: "${BOOKING_DB_CONNECTION}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
+      Keycloak__Authority: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
+      Keycloak__Audience: "tbe-b2c-api"
+      Keycloak__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      KeycloakB2B__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      KeycloakB2B__Realm: "tbe-b2b"
+      KeycloakB2B__ClientId: "booking-service"
+      KeycloakB2B__ClientSecret: "${KEYCLOAKB2B__BOOKING__CLIENTSECRET}"
+      KeycloakB2B__AgentAdminRole: "agent-admin"
+      Services__Gateway__BaseUrl: "${GATEWAY_PUBLIC_URL}"
+      Services__Gateway__InternalBaseUrl: "http://tbe-gateway:8080"
+      Services__FlightConnector__BaseUrl: "http://flight-connector-service:8080"
+      Encryption__ActiveKeyBase64: "${ENCRYPTION__ACTIVEKEYBASE64}"
+      Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
+      OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      #mssql:
-      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
-      #db-migrator:
-      #  condition: service_completed_successfully
     ports:
       - "6001:8080"
     networks:
@@ -170,21 +159,38 @@ services:
       context: .
       dockerfile: src/services/PaymentService/PaymentService.API/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__PaymentDb: "${PAYMENT_DB_CONNECTION}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
+      Keycloak__Authority: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
+      Keycloak__Audience: "tbe-b2c-api"
+      Keycloak__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      KeycloakB2B__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      KeycloakB2B__Realm: "tbe-b2b"
+      KeycloakB2B__ClientId: "payment-service"
+      KeycloakB2B__ClientSecret: "${KEYCLOAKB2B__CLIENTSECRET}"
+      KeycloakB2B__AgentAdminRole: "agent-admin"
+      Stripe__ApiKey: "${STRIPE__APIKEY}"
+      Stripe__PublishableKey: "${STRIPE__PUBLISHABLEKEY}"
+      Stripe__WebhookSecret: "${STRIPE__WEBHOOKSECRET}"
+      Wallet__TopUp__MinAmount: "${WALLET__TOPUP__MINAMOUNT:-10}"
+      Wallet__TopUp__MaxAmount: "${WALLET__TOPUP__MAXAMOUNT:-50000}"
+      Wallet__LowBalance__DefaultThreshold: "${WALLET__LOWBALANCE__DEFAULTTHRESHOLD:-500}"
+      Wallet__LowBalance__EmailCooldownHours: "${WALLET__LOWBALANCE__EMAILCOOLDOWNHOURS:-24}"
+      Wallet__LowBalance__PollIntervalMinutes: "${WALLET__LOWBALANCE__POLLINTERVALMINUTES:-15}"
+      Services__Gateway__BaseUrl: "${GATEWAY_PUBLIC_URL}"
+      Services__Gateway__InternalBaseUrl: "http://tbe-gateway:8080"
+      Encryption__ActiveKeyBase64: "${ENCRYPTION__ACTIVEKEYBASE64}"
+      Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
+      OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      # mssql:
-      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
-      #db-migrator:
-      #  condition: service_completed_successfully
     ports:
       - "6002:8080"
     networks:
@@ -195,21 +201,25 @@ services:
       context: .
       dockerfile: src/services/SearchService/SearchService.API/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__SearchDb: "${SEARCH_DB_CONNECTION}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
+      Keycloak__Authority: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
+      Keycloak__Audience: "tbe-b2c-api"
+      Keycloak__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      Services__Gateway__BaseUrl: "${GATEWAY_PUBLIC_URL}"
+      Services__Gateway__InternalBaseUrl: "http://tbe-gateway:8080"
+      Services__FlightConnector__BaseUrl: "http://flight-connector-service:8080"
+      Services__PricingService__BaseUrl: "http://pricing-service:8080"
+      OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      # mssql:
-      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
-      #db-migrator:
-      #  condition: service_completed_successfully
     ports:
       - "6003:8080"
     networks:
@@ -220,21 +230,32 @@ services:
       context: .
       dockerfile: src/services/FlightConnectorService/FlightConnectorService.API/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__FlightConnectorDb: "${FLIGHT_CONNECTOR_DB_CONNECTION}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
+      Keycloak__Authority: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
+      Keycloak__Audience: "tbe-b2c-api"
+      Keycloak__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      Services__Gateway__BaseUrl: "${GATEWAY_PUBLIC_URL}"
+      Services__Gateway__InternalBaseUrl: "http://tbe-gateway:8080"
+      Amadeus__ApiKey: "${AMADEUS__APIKEY}"
+      Amadeus__ApiSecret: "${AMADEUS__APISECRET}"
+      Sabre__Username: "${SABRE__USERNAME}"
+      Sabre__Password: "${SABRE__PASSWORD}"
+      Sabre__Pcc: "${SABRE__PCC}"
+      Galileo__Username: "${GALILEO__USERNAME}"
+      Galileo__Password: "${GALILEO__PASSWORD}"
+      Encryption__ActiveKeyBase64: "${ENCRYPTION__ACTIVEKEYBASE64}"
+      Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
+      OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      # mssql:
-      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
-      #db-migrator:
-      #  condition: service_completed_successfully
     ports:
       - "6004:8080"
     networks:
@@ -245,22 +266,27 @@ services:
       context: .
       dockerfile: src/services/HotelConnectorService/HotelConnectorService.API/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__HotelConnectorDb: "${HOTEL_CONNECTOR_DB_CONNECTION}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
+      Keycloak__Authority: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
+      Keycloak__Audience: "tbe-b2c-api"
+      Keycloak__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      Services__Gateway__BaseUrl: "${GATEWAY_PUBLIC_URL}"
+      Services__Gateway__InternalBaseUrl: "http://tbe-gateway:8080"
+      Hotelbeds__ApiKey: "${HOTELBEDS__APIKEY}"
+      Hotelbeds__ApiSecret: "${HOTELBEDS__APISECRET}"
+      Encryption__ActiveKeyBase64: "${ENCRYPTION__ACTIVEKEYBASE64}"
+      Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
+      OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      # mssql:
-      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
-      #db-migrator:
-      #  condition: service_completed_successfully
-
     ports:
       - "6005:8080"
     networks:
@@ -271,22 +297,25 @@ services:
       context: .
       dockerfile: src/services/PricingService/PricingService.API/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__PricingDb: "${PRICING_DB_CONNECTION}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
+      Keycloak__Authority: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
+      Keycloak__Audience: "tbe-b2c-api"
+      Keycloak__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      Services__Gateway__BaseUrl: "${GATEWAY_PUBLIC_URL}"
+      Services__Gateway__InternalBaseUrl: "http://tbe-gateway:8080"
+      Encryption__ActiveKeyBase64: "${ENCRYPTION__ACTIVEKEYBASE64}"
+      Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
+      OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      # mssql:
-      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
-      #db-migrator:
-      #  condition: service_completed_successfully
-
     ports:
       - "6006:8080"
     networks:
@@ -297,22 +326,30 @@ services:
       context: .
       dockerfile: src/services/NotificationService/NotificationService.API/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__NotificationDb: "${NOTIFICATION_DB_CONNECTION}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
+      Keycloak__Authority: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
+      Keycloak__Audience: "tbe-b2c-api"
+      Keycloak__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      Services__Gateway__BaseUrl: "${GATEWAY_PUBLIC_URL}"
+      Services__Gateway__InternalBaseUrl: "http://tbe-gateway:8080"
+      Services__BookingService__BaseUrl: "http://booking-service:8080"
+      SendGrid__ApiKey: "${SENDGRID__APIKEY}"
+      SendGrid__FromEmail: "${SENDGRID__FROMEMAIL:-no-reply@tbe.travel}"
+      SendGrid__FromName: "${SENDGRID__FROMNAME:-TBE Bookings}"
+      SendGrid__SandboxMode: "${SENDGRID__SANDBOXMODE:-false}"
+      Encryption__ActiveKeyBase64: "${ENCRYPTION__ACTIVEKEYBASE64}"
+      Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
+      OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      # mssql:
-      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
-      #db-migrator:
-      #  condition: service_completed_successfully
-
     ports:
       - "6007:8080"
     networks:
@@ -323,21 +360,25 @@ services:
       context: .
       dockerfile: src/services/CrmService/CrmService.API/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__CrmDb: "${CRM_DB_CONNECTION}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
+      Keycloak__Authority: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-backoffice"
+      Keycloak__Audience: "tbe-backoffice-api"
+      Keycloak__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      Services__Gateway__BaseUrl: "${GATEWAY_PUBLIC_URL}"
+      Services__Gateway__InternalBaseUrl: "http://tbe-gateway:8080"
+      Encryption__ActiveKeyBase64: "${ENCRYPTION__ACTIVEKEYBASE64}"
+      Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
+      OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      # mssql:
-      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
-      #db-migrator:
-      #  condition: service_completed_successfully
     ports:
       - "6008:8080"
     networks:
@@ -348,21 +389,29 @@ services:
       context: .
       dockerfile: src/services/BackofficeService/BackofficeService.API/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__BackofficeDb: "${BACKOFFICE_DB_CONNECTION}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Username: "${RABBITMQ_USER}"
       RabbitMQ__Password: "${RABBITMQ_PASSWORD}"
       Redis__ConnectionString: "redis:6378,password=${REDIS_PASSWORD}"
+      Keycloak__Authority: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-backoffice"
+      Keycloak__Audience: "tbe-backoffice-api"
+      Keycloak__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      KeycloakBackoffice__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      KeycloakBackoffice__Realm: "tbe-backoffice"
+      KeycloakBackoffice__ClientId: "backoffice-service"
+      KeycloakBackoffice__ClientSecret: "${KEYCLOAK_BACKOFFICE_ADMIN_CLIENT_SECRET}"
+      Services__Gateway__BaseUrl: "${GATEWAY_PUBLIC_URL}"
+      Services__Gateway__InternalBaseUrl: "http://tbe-gateway:8080"
+      Encryption__ActiveKeyBase64: "${ENCRYPTION__ACTIVEKEYBASE64}"
+      Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
+      OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      # mssql:
-      #   condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
-      #db-migrator:
-      #  condition: service_completed_successfully
     ports:
       - "6009:8080"
     networks:
@@ -372,6 +421,14 @@ services:
     build:
       context: src/portals/b2c-web
       dockerfile: Dockerfile
+    environment:
+      NEXTAUTH_URL: "${GATEWAY_PUBLIC_URL}"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET}"
+      GATEWAY_URL: "http://tbe-gateway:8080"
+      GATEWAY_PUBLIC_URL: "${GATEWAY_PUBLIC_URL}"
+      KEYCLOAK_ISSUER: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
+      KEYCLOAK_CLIENT_ID: "tbe-b2c-ui"
+      KEYCLOAK_CLIENT_SECRET: "${TBE_B2C_GATEWAY_CLIENT_SECRET}"
     networks:
       - shared-network
 
@@ -379,6 +436,16 @@ services:
     build:
       context: src/portals/b2b-web
       dockerfile: Dockerfile
+    environment:
+      NEXTAUTH_URL: "${GATEWAY_PUBLIC_URL}"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET}"
+      GATEWAY_URL: "http://tbe-gateway:8080"
+      GATEWAY_PUBLIC_URL: "${GATEWAY_PUBLIC_URL}"
+      KEYCLOAK_B2B_ISSUER: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2b"
+      KEYCLOAK_B2B_CLIENT_ID: "tbe-b2b-ui"
+      KEYCLOAK_B2B_CLIENT_SECRET: "${TBE_B2B_GATEWAY_CLIENT_SECRET}"
+      KEYCLOAK_B2B_ADMIN_CLIENT_ID: "tbe-b2b-admin"
+      KEYCLOAK_B2B_ADMIN_CLIENT_SECRET: "${KEYCLOAK_B2B_ADMIN_CLIENT_SECRET:-}"
     networks:
       - shared-network
 
@@ -387,14 +454,15 @@ services:
       context: src/portals/backoffice-web
       dockerfile: Dockerfile
     environment:
+      NEXTAUTH_URL: "${GATEWAY_PUBLIC_URL}"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET}"
+      GATEWAY_URL: "http://tbe-gateway:8080"
+      GATEWAY_PUBLIC_URL: "${GATEWAY_PUBLIC_URL}"
+      KEYCLOAK_BACKOFFICE_ISSUER: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-backoffice"
       KEYCLOAK_BACKOFFICE_CLIENT_ID: "tbe-backoffice-ui"
       KEYCLOAK_BACKOFFICE_CLIENT_SECRET: "${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
-      KEYCLOAK_BACKOFFICE_ISSUER: "https://openid.3ha.one/realms/tbe-backoffice"
       KEYCLOAK_BACKOFFICE_ADMIN_CLIENT_ID: "tbe-backoffice-admin"
       KEYCLOAK_BACKOFFICE_ADMIN_CLIENT_SECRET: "${KEYCLOAK_BACKOFFICE_ADMIN_CLIENT_SECRET}"
-      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET}"
-      NEXTAUTH_URL: "https://booking.3ha.one"
-      GATEWAY_URL: "http://tbe-gateway:8080"
     networks:
       - shared-network
 
