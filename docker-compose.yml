@@ -56,36 +56,36 @@ services:
       - shared-network
 
   # keycloak is hosted externally at openid.3ha.one — not run in docker compose
-  # keycloak:
-  #   image: quay.io/keycloak/keycloak:26.6.0
-  #   command: start --import-realm
-  #   environment:
-  #     KC_HEALTH_ENABLED: "true"
-  #     KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER}"
-  #     KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
-  #     KC_DB: mssql
-  #     KC_DB_URL: "jdbc:sqlserver://mssql;databaseName=KeycloakDb;encrypt=false"
-  #     KC_DB_USERNAME: "${MSSQL_SA_USER}"
-  #     KC_DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
-  #     KC_PROXY_HEADERS: "xforwarded"
-  #     KC_HOSTNAME: "https://openid.3ha.one"
-  #     KC_HOSTNAME_STRICT: "true"
-  #     KC_HOSTNAME_STRICT_HTTPS: "true"
-  #     KC_HTTP_ENABLED: "true"
-  #     KC_HTTP_RELATIVE_PATH: "/"
-  #   volumes:
-  #     - ./infra/keycloak/realms:/opt/keycloak/data/import
-  #   ports:
-  #     - "8080:8080"
-  #     - "9000:9000"
-  #   networks:
-  #     - shared-network
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '\"status\": \"UP\"'"]
-  #     interval: 15s
-  #     timeout: 10s
-  #     retries: 20
-  #     start_period: 60s
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6.0
+    command: start --import-realm
+    environment:
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USER}"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
+      KC_DB: mssql
+      KC_DB_URL: "jdbc:sqlserver://mssql;databaseName=KeycloakDb;encrypt=false"
+      KC_DB_USERNAME: "${MSSQL_SA_USER}"
+      KC_DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
+      KC_PROXY_HEADERS: "xforwarded"
+      KC_HOSTNAME: "https://openid.3ha.one"
+      KC_HOSTNAME_STRICT: "true"
+      KC_HOSTNAME_STRICT_HTTPS: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_RELATIVE_PATH: "/"
+    volumes:
+      - ./infra/keycloak/realms:/opt/keycloak/data/import
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    networks:
+      - shared-network
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '\"status\": \"UP\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
 
   # ============================================================
   # Wave 1 — Database Migrator (depends on mssql healthy)
