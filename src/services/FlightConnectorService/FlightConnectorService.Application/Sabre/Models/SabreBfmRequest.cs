@@ -7,7 +7,7 @@ public sealed class SabreBfmRequest
 public sealed class SabreOtaRequest
 {
     [JsonPropertyName("Version")]
-    public string Version { get; init; } = "3.4.0";
+    public string Version { get; init; } = "5.3.0";
 
     [JsonPropertyName("OriginDestinationInformation")]
     public List<SabreOriginDest> OriginDestinationInformation { get; init; } = [];
