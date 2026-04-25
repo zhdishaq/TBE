@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 
 namespace TBE.FlightConnectorService.Application.Sabre;
 
@@ -10,17 +12,16 @@ public class SabreAuthHandler(
     ILogger<SabreAuthHandler> logger) : DelegatingHandler
 {
     private volatile string? _cachedToken;
-    private DateTimeOffset _tokenExpiry = DateTimeOffset.MinValue.AddSeconds(60); // FIX: avoid underflow on first AddSeconds(-30) check
+    private DateTimeOffset _tokenExpiry = DateTimeOffset.MinValue.AddSeconds(60);
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        // FIX: compare against UtcNow directly without subtracting from MinValue
         if (string.IsNullOrEmpty(_cachedToken) || DateTimeOffset.UtcNow >= _tokenExpiry)
             await RefreshTokenAsync(cancellationToken);
 
-        request.Headers.Authorization = new("Bearer", _cachedToken);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _cachedToken);
         return await base.SendAsync(request, cancellationToken);
     }
 
@@ -29,22 +30,27 @@ public class SabreAuthHandler(
         await _lock.WaitAsync(ct);
         try
         {
-            // Double-check inside lock
             if (!string.IsNullOrEmpty(_cachedToken) && DateTimeOffset.UtcNow < _tokenExpiry) return;
 
             var o = opts.CurrentValue;
             var client = httpClientFactory.CreateClient("sabre-auth");
-            var body = new FormUrlEncodedContent([
-                new("grant_type", "client_credentials"),
-                new("client_id", o.ClientId),
-                new("client_secret", o.ClientSecret),
+
+            // Sabre requires HTTP Basic Auth: Base64(clientId:clientSecret)
+            var credentials = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes($"{o.ClientId}:{o.ClientSecret}"));
+
+            var req = new HttpRequestMessage(HttpMethod.Post, o.TokenUrl);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+            req.Content = new FormUrlEncodedContent([
+                new("grant_type", "client_credentials")
             ]);
-            var resp = await client.PostAsync(o.TokenUrl, body, ct);
+
+            var resp = await client.SendAsync(req, ct);
             resp.EnsureSuccessStatusCode();
+
             var json = await resp.Content.ReadFromJsonAsync<SabreTokenResponse>(ct);
             _cachedToken = json!.AccessToken;
 
-            // FIX: subtract 30s buffer safely — use a minimum expiry of 60s if ExpiresIn is too small
             var expiresIn = Math.Max(json.ExpiresIn - 30, 30);
             _tokenExpiry = DateTimeOffset.UtcNow.AddSeconds(expiresIn);
 
