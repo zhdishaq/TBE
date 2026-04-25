@@ -35,12 +35,18 @@ public class SabreAuthHandler(
             var o = opts.CurrentValue;
             var client = httpClientFactory.CreateClient("sabre-auth");
 
-            // Sabre requires HTTP Basic Auth: Base64(clientId:clientSecret)
-            var credentials = Convert.ToBase64String(
-                Encoding.UTF8.GetBytes($"{o.ClientId}:{o.ClientSecret}"));
+            // Sabre ACCESS TOKEN V2 — double Base64 encoding:
+            // Step 1: Base64(clientId)
+            // Step 2: Base64(clientSecret)
+            // Step 3: concatenate → "Base64(clientId):Base64(clientSecret)"
+            // Step 4: Base64(step3) → final Authorization header value
+            var b64UserId   = Convert.ToBase64String(Encoding.UTF8.GetBytes(o.ClientId));
+            var b64Password = Convert.ToBase64String(Encoding.UTF8.GetBytes(o.ClientSecret));
+            var combined    = $"{b64UserId}:{b64Password}";
+            var b64Combined = Convert.ToBase64String(Encoding.UTF8.GetBytes(combined));
 
             var req = new HttpRequestMessage(HttpMethod.Post, o.TokenUrl);
-            req.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Basic", b64Combined);
             req.Content = new FormUrlEncodedContent([
                 new("grant_type", "client_credentials")
             ]);
