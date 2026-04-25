@@ -14,21 +14,7 @@ public sealed class MockSabreFlightProvider : IFlightAvailabilityProvider
 
     private static readonly Random Rng = new();
 
-    // Realistic Middle East / Gulf airline data for JED, DXB, RUH, AMM, CAI, KWI, BAH, MCT
     private static readonly string[] Airlines = ["SV", "EK", "FZ", "GF", "WY", "RJ", "MS", "KU", "XY", "J9"];
-    private static readonly Dictionary<string, string> AirlineNames = new()
-    {
-        ["SV"] = "Saudia",
-        ["EK"] = "Emirates",
-        ["FZ"] = "flydubai",
-        ["GF"] = "Gulf Air",
-        ["WY"] = "Oman Air",
-        ["RJ"] = "Royal Jordanian",
-        ["MS"] = "EgyptAir",
-        ["KU"] = "Kuwait Airways",
-        ["XY"] = "flynas",
-        ["J9"] = "Jazeera Airways"
-    };
 
     private static readonly Dictionary<string, int> RouteDurations = new()
     {
@@ -53,26 +39,24 @@ public sealed class MockSabreFlightProvider : IFlightAvailabilityProvider
         // Generate 8-15 fake offers
         var count = Rng.Next(8, 16);
         var departureBase = request.DepartureDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
-                            .AddHours(Rng.Next(5, 9)); // first flight around 05:00-09:00
+                            .AddHours(Rng.Next(5, 9));
 
         for (int i = 0; i < count; i++)
         {
-            var airline      = Airlines[Rng.Next(Airlines.Length)];
-            var flightNum    = Rng.Next(100, 999).ToString();
-            var depTime      = departureBase.AddHours(i * Rng.Next(1, 3)).AddMinutes(Rng.Next(0, 60));
-            var arrTime      = depTime.AddMinutes(baseDuration + Rng.Next(-10, 20));
-            var basePrice    = 300m + (i * 45m) + (decimal)Rng.Next(0, 200);
-            var taxes        = Math.Round(basePrice * 0.15m, 2);
-            var yq           = Math.Round(basePrice * 0.05m, 2);
-            var totalPrice   = basePrice + taxes + yq;
-            var cabins       = new[] { "ECONOMY", "ECONOMY", "ECONOMY", "BUSINESS", "FIRST" };
-            var cabin        = request.TravelClass ?? cabins[Rng.Next(cabins.Length)];
-            var aircraft     = new[] { "73H", "77W", "32A", "321", "788", "359" }[Rng.Next(6)];
-            var stops        = Rng.Next(0, 3) == 0 && i > 5; // ~33% chance of 1 stop for later results
+            var airline    = Airlines[Rng.Next(Airlines.Length)];
+            var flightNum  = Rng.Next(100, 999).ToString();
+            var depTime    = departureBase.AddHours(i * Rng.Next(1, 3)).AddMinutes(Rng.Next(0, 60));
+            var arrTime    = depTime.AddMinutes(baseDuration + Rng.Next(-10, 20));
+            var basePrice  = 300m + (i * 45m) + (decimal)Rng.Next(0, 200);
+            var taxes      = Math.Round(basePrice * 0.15m, 2);
+            var yq         = Math.Round(basePrice * 0.05m, 2);
+            var cabin      = request.TravelClass ?? new[] { "ECONOMY", "ECONOMY", "ECONOMY", "BUSINESS", "FIRST" }[Rng.Next(5)];
+            var aircraft   = new[] { "73H", "77W", "32A", "321", "788", "359" }[Rng.Next(6)];
+            var hasStop    = Rng.Next(0, 3) == 0 && i > 5;
 
             var segments = new List<FlightSegment>();
 
-            if (!stops)
+            if (!hasStop)
             {
                 segments.Add(new FlightSegment
                 {
@@ -88,12 +72,11 @@ public sealed class MockSabreFlightProvider : IFlightAvailabilityProvider
             }
             else
             {
-                // 1-stop via Dubai or Riyadh
-                var via         = request.Origin == "JED" ? "DXB" : "RUH";
-                var leg1Dur     = baseDuration / 2;
-                var layover     = Rng.Next(60, 150);
-                var leg2Dep     = depTime.AddMinutes(leg1Dur + layover);
-                var leg2Arr     = leg2Dep.AddMinutes(leg1Dur);
+                var via     = request.Origin == "JED" ? "DXB" : "RUH";
+                var leg1Dur = baseDuration / 2;
+                var layover = Rng.Next(60, 150);
+                var leg2Dep = depTime.AddMinutes(leg1Dur + layover);
+                var leg2Arr = leg2Dep.AddMinutes(leg1Dur);
 
                 segments.Add(new FlightSegment
                 {
@@ -136,10 +119,12 @@ public sealed class MockSabreFlightProvider : IFlightAvailabilityProvider
             });
         }
 
-        // Sort by total price ascending
+        // FIX: MaxResults is int (not int?) — use it directly, default 10
+        var maxResults = request.MaxResults > 0 ? request.MaxResults : 10;
+
         IReadOnlyList<UnifiedFlightOffer> result = offers
             .OrderBy(o => o.Price.Base + o.Price.Surcharges.Sum(s => s.Amount) + o.Price.Taxes.Sum(t => t.Amount))
-            .Take(request.MaxResults ?? 10)
+            .Take(maxResults)
             .ToList();
 
         return Task.FromResult(result);
