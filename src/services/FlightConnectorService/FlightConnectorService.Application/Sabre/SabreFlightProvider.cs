@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using TBE.Contracts.Inventory;
 using TBE.Contracts.Inventory.Models;
 using TBE.FlightConnectorService.Application.Sabre.Models;
+using Refit;
 
 namespace TBE.FlightConnectorService.Application.Sabre;
 
@@ -14,7 +15,18 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
         FlightSearchRequest request, CancellationToken ct = default)
     {
         var body = BuildRequest(request);
-        var raw = await api.SearchAsync(body, ct);
+        SabreBfmResponse raw;
+        try
+        {
+            raw = await api.SearchAsync(body, ct);
+        }
+        catch (ApiException ex)
+        {
+            // Log full Sabre error response body for debugging
+            var errorBody = await ex.GetContentAsAsync<object>() ?? ex.Content;
+            logger.LogError("Sabre API error {StatusCode}: {ErrorBody}", (int)ex.StatusCode, errorBody);
+            return [];
+        }
 
         if (raw.GroupedItinerary is null) return [];
 
@@ -35,8 +47,6 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
         if (req.Children > 0) ptqs.Add(new SabrePtq { Code = "CNN", Quantity = req.Children });
         if (req.Infants > 0)  ptqs.Add(new SabrePtq { Code = "INF", Quantity = req.Infants });
 
-        // FIX: DateOnly.ToString() does not support literal 'T' in format string.
-        // Concatenate the time suffix instead of embedding it in the format.
         var origins = new List<SabreOriginDest>
         {
             new()
@@ -60,10 +70,19 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
         {
             OtaRequest = new SabreOtaRequest
             {
+                Version = "3.4.0",
                 OriginDestinationInformation = origins,
                 TravelerInfoSummary = new SabreTravelerInfo
                 {
+                    SeatsRequested = [req.Adults + req.Children],
                     AirTravelerAvail = [new SabreTravelerAvail { PassengerTypeQuantity = ptqs }]
+                },
+                TpaExtensions = new SabreTpaExtensions
+                {
+                    IntelliSellTransaction = new SabreIntelliSell
+                    {
+                        RequestType = new SabreRequestType { Name = "200ITINS" }
+                    }
                 }
             }
         };
@@ -79,7 +98,6 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
         var currency = pricing?.Fare.TotalFare.Currency ?? "GBP";
         var totalAmount = pricing?.Fare.TotalFare.Amount ?? 0m;
 
-        // YQ/YR separation: same rule as Amadeus — carrier surcharges split from government taxes
         var allTaxes = (pricing?.Taxes ?? [])
             .Where(t => taxMap.ContainsKey(t.Ref))
             .Select(t => taxMap[t.Ref])
@@ -121,7 +139,7 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
         {
             Source    = "sabre",
             SourceRef = $"sabre-{it.Id}",
-            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(30),  // Sabre does not return explicit expiry
+            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(30),
             CabinClass = cabin,
             Price = new PriceBreakdown
             {

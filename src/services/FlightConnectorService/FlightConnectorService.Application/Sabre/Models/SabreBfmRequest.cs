@@ -6,10 +6,15 @@ public sealed class SabreBfmRequest
 }
 public sealed class SabreOtaRequest
 {
+    [JsonPropertyName("Version")]
+    public string Version { get; init; } = "3.4.0";
+
     [JsonPropertyName("OriginDestinationInformation")]
     public List<SabreOriginDest> OriginDestinationInformation { get; init; } = [];
+
     [JsonPropertyName("TravelerInfoSummary")]
     public SabreTravelerInfo TravelerInfoSummary { get; init; } = default!;
+
     [JsonPropertyName("TPA_Extensions")]
     public SabreTpaExtensions TpaExtensions { get; init; } = new();
 }
@@ -23,6 +28,9 @@ public sealed class SabreOriginDest
 public sealed class SabreLocation { [JsonPropertyName("LocationCode")] public string LocationCode { get; init; } = default!; }
 public sealed class SabreTravelerInfo
 {
+    [JsonPropertyName("SeatsRequested")]
+    public List<int> SeatsRequested { get; init; } = [];
+
     [JsonPropertyName("AirTravelerAvail")]
     public List<SabreTravelerAvail> AirTravelerAvail { get; init; } = [];
 }
