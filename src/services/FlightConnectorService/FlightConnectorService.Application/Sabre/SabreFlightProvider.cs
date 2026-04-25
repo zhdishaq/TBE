@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using TBE.Contracts.Inventory;
 using TBE.Contracts.Inventory.Models;
 using TBE.FlightConnectorService.Application.Sabre.Models;
@@ -6,7 +7,10 @@ using Refit;
 
 namespace TBE.FlightConnectorService.Application.Sabre;
 
-public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlightProvider> logger)
+public sealed class SabreFlightProvider(
+    ISabreFlightApi api,
+    IOptionsMonitor<SabreOptions> opts,
+    ILogger<SabreFlightProvider> logger)
     : IFlightAvailabilityProvider
 {
     public string Name => "sabre";
@@ -14,7 +18,7 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
     public async Task<IReadOnlyList<UnifiedFlightOffer>> SearchAsync(
         FlightSearchRequest request, CancellationToken ct = default)
     {
-        var body = BuildRequest(request);
+        var body = BuildRequest(request, opts.CurrentValue.PseudoCityCode);
         SabreBfmResponse raw;
         try
         {
@@ -22,7 +26,6 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
         }
         catch (ApiException ex)
         {
-            // Log full Sabre error response body for debugging
             var errorBody = await ex.GetContentAsAsync<object>() ?? ex.Content;
             logger.LogError("Sabre API error {StatusCode}: {ErrorBody}", (int)ex.StatusCode, errorBody);
             return [];
@@ -40,7 +43,7 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
             .ToList();
     }
 
-    private static SabreBfmRequest BuildRequest(FlightSearchRequest req)
+    private static SabreBfmRequest BuildRequest(FlightSearchRequest req, string pseudoCityCode)
     {
         var ptqs = new List<SabrePtq>();
         if (req.Adults > 0)   ptqs.Add(new SabrePtq { Code = "ADT", Quantity = req.Adults });
@@ -57,6 +60,7 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
                 DestinationLocation = new SabreLocation { LocationCode = req.Destination },
             }
         };
+
         if (req.ReturnDate.HasValue)
             origins.Add(new SabreOriginDest
             {
@@ -70,7 +74,23 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
         {
             OtaRequest = new SabreOtaRequest
             {
-                Version = "3.4.0",
+                Version = "5",
+                Pos = new SabrePos
+                {
+                    Source =
+                    [
+                        new SabrePosSource
+                        {
+                            PseudoCityCode = pseudoCityCode,
+                            RequestorId = new SabreRequestorId
+                            {
+                                Type = "1",
+                                Id   = "1",
+                                CompanyName = new SabreCompanyName { Code = "TN" }
+                            }
+                        }
+                    ]
+                },
                 OriginDestinationInformation = origins,
                 TravelerInfoSummary = new SabreTravelerInfo
                 {
@@ -94,9 +114,9 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
         Dictionary<int, SabreTaxDesc> taxMap,
         Dictionary<int, SabreFareComponentDesc> fareMap)
     {
-        var pricing = it.PricingInformation.FirstOrDefault();
-        var currency = pricing?.Fare.TotalFare.Currency ?? "GBP";
-        var totalAmount = pricing?.Fare.TotalFare.Amount ?? 0m;
+        var pricing      = it.PricingInformation.FirstOrDefault();
+        var currency     = pricing?.Fare.TotalFare.Currency ?? "SAR";
+        var totalAmount  = pricing?.Fare.TotalFare.Amount ?? 0m;
 
         var allTaxes = (pricing?.Taxes ?? [])
             .Where(t => taxMap.ContainsKey(t.Ref))
