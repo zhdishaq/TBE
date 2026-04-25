@@ -35,12 +35,14 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
         if (req.Children > 0) ptqs.Add(new SabrePtq { Code = "CNN", Quantity = req.Children });
         if (req.Infants > 0)  ptqs.Add(new SabrePtq { Code = "INF", Quantity = req.Infants });
 
+        // FIX: DateOnly.ToString() does not support literal 'T' in format string.
+        // Concatenate the time suffix instead of embedding it in the format.
         var origins = new List<SabreOriginDest>
         {
             new()
             {
                 Rph = "1",
-                DepartureDateTime = req.DepartureDate.ToString("yyyy-MM-ddT00:00:00"),
+                DepartureDateTime   = req.DepartureDate.ToString("yyyy-MM-dd") + "T00:00:00",
                 OriginLocation      = new SabreLocation { LocationCode = req.Origin },
                 DestinationLocation = new SabreLocation { LocationCode = req.Destination },
             }
@@ -49,7 +51,7 @@ public sealed class SabreFlightProvider(ISabreFlightApi api, ILogger<SabreFlight
             origins.Add(new SabreOriginDest
             {
                 Rph = "2",
-                DepartureDateTime   = req.ReturnDate.Value.ToString("yyyy-MM-ddT00:00:00"),
+                DepartureDateTime   = req.ReturnDate.Value.ToString("yyyy-MM-dd") + "T00:00:00",
                 OriginLocation      = new SabreLocation { LocationCode = req.Destination },
                 DestinationLocation = new SabreLocation { LocationCode = req.Origin },
             });
