@@ -21,11 +21,12 @@ public static class SwaggerExtensions
             // Add JWT Authentication support to Swagger
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
-                Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
                 Name = "Authorization",
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT",
                 In = ParameterLocation.Header,
-                Type = SecuritySchemeType.ApiKey,
-                Scheme = "Bearer"
+                Description = "JWT Authorization header using the Bearer scheme."
             });
 
             c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -50,7 +51,10 @@ public static class SwaggerExtensions
     public static IApplicationBuilder UseTbeSwagger(this IApplicationBuilder app)
     {
         app.UseSwagger();
-        app.UseSwaggerUI();
+        app.UseSwaggerUI(c =>
+        {
+            c.EnablePersistAuthorization();
+        });
         return app;
     }
 }
