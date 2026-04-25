@@ -10,13 +10,14 @@ public class SabreAuthHandler(
     ILogger<SabreAuthHandler> logger) : DelegatingHandler
 {
     private volatile string? _cachedToken;
-    private DateTimeOffset _tokenExpiry = DateTimeOffset.MinValue;
+    private DateTimeOffset _tokenExpiry = DateTimeOffset.MinValue.AddSeconds(60); // FIX: avoid underflow on first AddSeconds(-30) check
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        if (DateTimeOffset.UtcNow >= _tokenExpiry.AddSeconds(-30))
+        // FIX: compare against UtcNow directly without subtracting from MinValue
+        if (string.IsNullOrEmpty(_cachedToken) || DateTimeOffset.UtcNow >= _tokenExpiry)
             await RefreshTokenAsync(cancellationToken);
 
         request.Headers.Authorization = new("Bearer", _cachedToken);
@@ -28,7 +29,9 @@ public class SabreAuthHandler(
         await _lock.WaitAsync(ct);
         try
         {
-            if (DateTimeOffset.UtcNow < _tokenExpiry.AddSeconds(-30)) return;
+            // Double-check inside lock
+            if (!string.IsNullOrEmpty(_cachedToken) && DateTimeOffset.UtcNow < _tokenExpiry) return;
+
             var o = opts.CurrentValue;
             var client = httpClientFactory.CreateClient("sabre-auth");
             var body = new FormUrlEncodedContent([
@@ -40,7 +43,11 @@ public class SabreAuthHandler(
             resp.EnsureSuccessStatusCode();
             var json = await resp.Content.ReadFromJsonAsync<SabreTokenResponse>(ct);
             _cachedToken = json!.AccessToken;
-            _tokenExpiry = DateTimeOffset.UtcNow.AddSeconds(json.ExpiresIn);
+
+            // FIX: subtract 30s buffer safely — use a minimum expiry of 60s if ExpiresIn is too small
+            var expiresIn = Math.Max(json.ExpiresIn - 30, 30);
+            _tokenExpiry = DateTimeOffset.UtcNow.AddSeconds(expiresIn);
+
             logger.LogInformation("Sabre token refreshed, expires at {Expiry}", _tokenExpiry);
             // SECURITY: never log _cachedToken value
         }
