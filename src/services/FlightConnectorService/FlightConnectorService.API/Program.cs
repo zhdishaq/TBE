@@ -21,10 +21,9 @@ try
                      .Enrich.FromLogContext()
                      .Enrich.WithProperty("Service", "FlightConnectorService"));
 
-    // FlightConnectorService is stateless — no DB or outbox
     builder.Services.AddTbeMassTransitWithRabbitMq(builder.Configuration);
 
-    // Amadeus adapter
+    // ── Amadeus adapter ──────────────────────────────────────────────────────
     builder.Services.Configure<TBE.FlightConnectorService.Application.Amadeus.AmadeusOptions>(
         builder.Configuration.GetSection("Amadeus"));
     builder.Services.AddHttpClient("amadeus-auth");
@@ -38,19 +37,29 @@ try
     builder.Services.AddKeyedSingleton<TBE.Contracts.Inventory.IFlightAvailabilityProvider,
         TBE.FlightConnectorService.Application.Amadeus.AmadeusFlightProvider>("amadeus");
 
-    // Sabre adapter
-    builder.Services.Configure<TBE.FlightConnectorService.Application.Sabre.SabreOptions>(
-        builder.Configuration.GetSection("Sabre"));
-    builder.Services.AddHttpClient("sabre-auth");
-    builder.Services.AddTransient<TBE.FlightConnectorService.Application.Sabre.SabreAuthHandler>();
-    builder.Services
-        .AddRefitClient<TBE.FlightConnectorService.Application.Sabre.ISabreFlightApi>()
-        .ConfigureHttpClient(c => c.BaseAddress = new Uri(
-            builder.Configuration["Sabre:BaseUrl"] ?? "https://api.havail.sabre.com"))
-        .AddHttpMessageHandler<TBE.FlightConnectorService.Application.Sabre.SabreAuthHandler>()
-        .AddStandardResilienceHandler();
-    builder.Services.AddKeyedSingleton<TBE.Contracts.Inventory.IFlightAvailabilityProvider,
-        TBE.FlightConnectorService.Application.Sabre.SabreFlightProvider>("sabre");
+    // ── Sabre adapter — real or mock based on Sabre:UseMock config flag ─────
+    var useMockSabre = builder.Configuration.GetValue<bool>("Sabre:UseMock");
+    if (useMockSabre)
+    {
+        Log.Warning("⚠  Sabre provider is running in MOCK mode. Set Sabre:UseMock=false to use real Sabre API.");
+        builder.Services.AddKeyedSingleton<TBE.Contracts.Inventory.IFlightAvailabilityProvider,
+            TBE.FlightConnectorService.Application.Mock.MockSabreFlightProvider>("sabre");
+    }
+    else
+    {
+        builder.Services.Configure<TBE.FlightConnectorService.Application.Sabre.SabreOptions>(
+            builder.Configuration.GetSection("Sabre"));
+        builder.Services.AddHttpClient("sabre-auth");
+        builder.Services.AddTransient<TBE.FlightConnectorService.Application.Sabre.SabreAuthHandler>();
+        builder.Services
+            .AddRefitClient<TBE.FlightConnectorService.Application.Sabre.ISabreFlightApi>()
+            .ConfigureHttpClient(c => c.BaseAddress = new Uri(
+                builder.Configuration["Sabre:BaseUrl"] ?? "https://api.cert.platform.sabre.com"))
+            .AddHttpMessageHandler<TBE.FlightConnectorService.Application.Sabre.SabreAuthHandler>()
+            .AddStandardResilienceHandler();
+        builder.Services.AddKeyedSingleton<TBE.Contracts.Inventory.IFlightAvailabilityProvider,
+            TBE.FlightConnectorService.Application.Sabre.SabreFlightProvider>("sabre");
+    }
 
     // Expose all providers as IEnumerable for the multi-provider controller action
     builder.Services.AddSingleton<IEnumerable<TBE.Contracts.Inventory.IFlightAvailabilityProvider>>(sp => [
@@ -58,7 +67,7 @@ try
         sp.GetRequiredKeyedService<TBE.Contracts.Inventory.IFlightAvailabilityProvider>("sabre"),
     ]);
 
-    // Keycloak JWT + FallbackPolicy (COMP-05).
+    // ── Keycloak JWT + FallbackPolicy ────────────────────────────────────────
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
         {
@@ -73,7 +82,7 @@ try
             .Build();
     });
 
-    // Shared OTel + AES-GCM primitives.
+    // ── Shared infrastructure ────────────────────────────────────────────────
     builder.Services.AddTbeOpenTelemetry(builder.Configuration, "FlightConnectorService");
     builder.Services.Configure<EncryptionOptions>(builder.Configuration.GetSection("Encryption"));
     builder.Services.AddSingleton<IEncryptionKeyProvider, EnvEncryptionKeyProvider>();
@@ -104,13 +113,10 @@ try
     var app = builder.Build();
     app.UseSerilogRequestLogging();
     if (app.Environment.IsDevelopment())
-    {
         app.UseTbeSwagger();
-    }
 
     app.UseAuthentication();
     app.UseAuthorization();
-
     app.MapHealthChecks("/health").AllowAnonymous();
     app.MapControllers();
     app.Run();
