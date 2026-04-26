@@ -1,5 +1,4 @@
 using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
@@ -9,6 +8,7 @@ using TBE.Common.Messaging;
 using TBE.SearchService.Application.Airports;
 using TBE.SearchService.Application.Cache;
 using TBE.Common.Telemetry;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(new CompactJsonFormatter())
