@@ -1,4 +1,6 @@
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -22,18 +24,29 @@ try
                      .Enrich.FromLogContext()
                      .Enrich.WithProperty("Service", "SearchService"));
 
-    // Shared OTel + PII/PCI scrubbing (COMP-05 / COMP-06).
     builder.Services.AddTbeOpenTelemetry(builder.Configuration, "SearchService");
-
-    // SearchService is Redis-only (no DB) — uses Redis for search result caching
     builder.Services.AddTbeMassTransitWithRabbitMq(builder.Configuration);
+
+    // ── Keycloak JWT authentication ─────────────────────────────────────────
+    // SearchService accepts B2C tokens (default scheme) — gateway routes B2B
+    // traffic for /api/b2b/search/* but the gateway has already validated those
+    // tokens with the B2BPolicy. Gateway always forwards Bearer header upstream;
+    // the search service revalidates as a defence-in-depth layer.
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+        {
+            o.Authority = builder.Configuration["Keycloak:Authority"];
+            o.Audience  = builder.Configuration["Keycloak:Audience"];
+            o.RequireHttpsMetadata = builder.Environment.IsProduction();
+        });
+    builder.Services.AddAuthorization();
 
     // Named HttpClient for FlightConnectorService — D-08: no project reference, HTTP only
     builder.Services.AddHttpClient("flight-connector", c =>
     {
         c.BaseAddress = new Uri(
             builder.Configuration["Services:FlightConnector:BaseUrl"]
-            ?? "http://flightconnectorservice");
+            ?? "http://flight-connector-service:8080");
     });
 
     // Pricing service named client
@@ -41,10 +54,10 @@ try
     {
         c.BaseAddress = new Uri(
             builder.Configuration["Services:PricingService:BaseUrl"]
-            ?? "http://pricingservice");
+            ?? "http://pricing-service:8080");
     });
 
-    // Redis connection for distributed cache (HybridCache L2 + booking tokens)
+    // Redis distributed cache
     builder.Services.AddStackExchangeRedisCache(opts =>
     {
         opts.Configuration = builder.Configuration["Redis:ConnectionString"]
@@ -52,17 +65,11 @@ try
             ?? "localhost:6378";
     });
 
-    // Shared IConnectionMultiplexer — used by IataAirportSeeder and RedisAirportLookup
-    // (StackExchangeRedisCache uses its own internal multiplexer, so we keep this one
-    // explicitly registered as a singleton for the airports subsystem.)
     builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     {
         var cs = builder.Configuration["Redis:ConnectionString"]
             ?? builder.Configuration.GetConnectionString("Redis")
             ?? "localhost:6378";
-        // AbortOnConnectFail=false: return a disconnected multiplexer instead of
-        // throwing when Redis is temporarily unreachable at startup.
-        // IataAirportSeeder already handles a missing cache gracefully.
         var options = ConfigurationOptions.Parse(cs);
         options.AbortOnConnectFail = false;
         options.ConnectRetry = 3;
@@ -70,23 +77,17 @@ try
         return ConnectionMultiplexer.Connect(options);
     });
 
-    // IATA airport typeahead (CONTEXT D-18). Seeder runs at startup and populates
-    // iata:airports + iata:idx:prefix; RedisAirportLookup serves /airports queries.
     builder.Services.AddSingleton<IAirportLookup, RedisAirportLookup>();
     builder.Services.AddHostedService<IataAirportSeeder>();
 
-    // HybridCache (L1 in-process + L2 Redis)
     builder.Services.AddHybridCache(opts =>
     {
-        opts.MaximumPayloadBytes = 1024 * 1024;  // 1 MB max per cache entry
+        opts.MaximumPayloadBytes = 1024 * 1024;
         opts.MaximumKeyLength = 512;
     });
 
-    // SearchCacheService
     builder.Services.AddSingleton<ISearchCacheService, SearchCacheService>();
 
-    // GDS rate-limit guard: in-process sliding window 8 req/sec (upgrade to distributed in Phase 7)
-    // T-02-04-03: enforced in SearchController before FlightConnector HTTP call
     builder.Services.AddRateLimiter(opts =>
     {
         opts.OnRejected = async (context, ct) =>
@@ -102,12 +103,9 @@ try
             limiterOpts.Window            = TimeSpan.FromSeconds(1);
             limiterOpts.SegmentsPerWindow = 4;
             limiterOpts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-            limiterOpts.QueueLimit        = 0;  // no queue — reject immediately
+            limiterOpts.QueueLimit        = 0;
         });
 
-        // Airports typeahead: 60 req/min/IP fixed window (T-04-02-04). Partitioned
-        // by client IP so a single abusive caller cannot starve the endpoint for
-        // other users. Anonymous endpoint — no Authorization header to key off.
         opts.AddPolicy("airports", httpContext =>
         {
             var ip = httpContext.Connection.RemoteIpAddress?.ToString()
@@ -155,7 +153,10 @@ try
         app.UseTbeSwagger();
     }
 
-    app.MapHealthChecks("/health");
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapHealthChecks("/health").AllowAnonymous();
     app.MapControllers();
     app.Run();
 }

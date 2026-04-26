@@ -3,28 +3,6 @@ services:
   # ============================================================
   # Wave 0 — Infrastructure (no dependencies)
   # ============================================================
-  #
-  # Keycloak is hosted externally at https://openid.3ha.one — NOT run in this compose file.
-  # The gateway's public URL is https://booking.3ha.one (fronted by reverse-proxy / ingress).
-  # All secrets come from .env (never committed). Service-level env blocks below override
-  # values that would otherwise come from each service's appsettings.json.
-
-  # mssql:
-  #   image: mcr.microsoft.com/mssql/server:2022-latest
-  #   environment:
-  #     ACCEPT_EULA: "Y"
-  #     MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
-  #   volumes:
-  #     - mssql-data:/var/opt/mssql
-  #   ports:
-  #     - "1433:1433"
-  #   healthcheck:
-  #     test: /opt/mssql-tools18/bin/sqlcmd -S localhost -C -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" -b -o /dev/null
-  #     interval: 10s
-  #     timeout: 45s
-  #     retries: 45
-  #     start_period: 10s
-
   rabbitmq:
     image: rabbitmq:3.13-management
     environment:
@@ -60,9 +38,6 @@ services:
     networks:
       - shared-network
 
-  # keycloak service block removed — hosted externally at https://openid.3ha.one.
-  # If you need a local Keycloak for dev isolation, uncomment the block in git history
-  # (commit docker-compose.yml prior to 260424-20h-wire-services-to-share-infra).
   keycloak:
     image: quay.io/keycloak/keycloak:26.6.0
     command: start --import-realm
@@ -93,36 +68,10 @@ services:
       timeout: 10s
       retries: 20
       start_period: 60s
-  # ============================================================
-  # Wave 1 — Database Migrator (depends on mssql healthy)
-  # ============================================================
-
-  # db-migrator:
-  #   build:
-  #     context: .
-  #     dockerfile: src/tools/TBE.DbMigrator/Dockerfile
-  #   networks:
-  #     - shared-network
-  #   environment:
-  #     ConnectionStrings__BookingDb: "${BOOKING_DB_CONNECTION}"
-  #     ConnectionStrings__PaymentDb: "${PAYMENT_DB_CONNECTION}"
-  #     ConnectionStrings__SearchDb: "${SEARCH_DB_CONNECTION}"
-  #     ConnectionStrings__PricingDb: "${PRICING_DB_CONNECTION}"
-  #     ConnectionStrings__NotificationDb: "${NOTIFICATION_DB_CONNECTION}"
-  #     ConnectionStrings__CrmDb: "${CRM_DB_CONNECTION}"
-  #     ConnectionStrings__BackofficeDb: "${BACKOFFICE_DB_CONNECTION}"
-  #     ConnectionStrings__FlightConnectorDb: "${FLIGHT_CONNECTOR_DB_CONNECTION}"
-  #     ConnectionStrings__HotelConnectorDb: "${HOTEL_CONNECTOR_DB_CONNECTION}"
-  #   # depends_on:
-  #   #   mssql:
-  #   #     condition: service_healthy
-  #   restart: "no"
 
   # ============================================================
   # Wave 2 — Application Services
-  # (depend on rabbitmq + redis healthy)
   # ============================================================
-
   tbe-gateway:
     build:
       context: .
@@ -139,10 +88,8 @@ services:
       PublicBaseUrl: "${GATEWAY_PUBLIC_URL}"
       OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      rabbitmq: { condition: service_healthy }
+      redis:    { condition: service_healthy }
     ports:
       - "5000:8080"
     networks:
@@ -174,10 +121,8 @@ services:
       Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
       OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      rabbitmq: { condition: service_healthy }
+      redis:    { condition: service_healthy }
     ports:
       - "6001:8080"
     networks:
@@ -216,10 +161,8 @@ services:
       Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
       OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      rabbitmq: { condition: service_healthy }
+      redis:    { condition: service_healthy }
     ports:
       - "6002:8080"
     networks:
@@ -239,16 +182,16 @@ services:
       Keycloak__Authority: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
       Keycloak__Audience: "tbe-b2c-api"
       Keycloak__BaseUrl: "${KEYCLOAK_PUBLIC_URL}"
+      Keycloak__ServiceClientId: "tbe-b2c-admin"
+      Keycloak__ServiceClientSecret: "${KEYCLOAK_B2C_ADMIN_CLIENT_SECRET}"
       Services__Gateway__BaseUrl: "${GATEWAY_PUBLIC_URL}"
       Services__Gateway__InternalBaseUrl: "http://tbe-gateway:8080"
       Services__FlightConnector__BaseUrl: "http://flight-connector-service:8080"
       Services__PricingService__BaseUrl: "http://pricing-service:8080"
       OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      rabbitmq: { condition: service_healthy }
+      redis:    { condition: service_healthy }
     ports:
       - "6003:8080"
     networks:
@@ -272,19 +215,20 @@ services:
       Services__Gateway__InternalBaseUrl: "http://tbe-gateway:8080"
       Amadeus__ApiKey: "${AMADEUS__APIKEY}"
       Amadeus__ApiSecret: "${AMADEUS__APISECRET}"
-      Sabre__Username: "${SABRE__USERNAME}"
-      Sabre__Password: "${SABRE__PASSWORD}"
-      Sabre__Pcc: "${SABRE__PCC}"
+      Sabre__UseMock: "${SABRE__USEMOCK:-true}"
+      Sabre__ClientId: "${SABRE__CLIENTID}"
+      Sabre__ClientSecret: "${SABRE__CLIENTSECRET}"
+      Sabre__PseudoCityCode: "${SABRE__PSEUDOCITYCODE:-XXXX}"
+      Sabre__BaseUrl: "${SABRE__BASEURL:-https://api.cert.platform.sabre.com}"
+      Sabre__TokenUrl: "${SABRE__TOKENURL:-https://api.cert.platform.sabre.com/v2/auth/token}"
       Galileo__Username: "${GALILEO__USERNAME}"
       Galileo__Password: "${GALILEO__PASSWORD}"
       Encryption__ActiveKeyBase64: "${ENCRYPTION__ACTIVEKEYBASE64}"
       Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
       OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      rabbitmq: { condition: service_healthy }
+      redis:    { condition: service_healthy }
     ports:
       - "6004:8080"
     networks:
@@ -312,10 +256,8 @@ services:
       Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
       OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      rabbitmq: { condition: service_healthy }
+      redis:    { condition: service_healthy }
     ports:
       - "6005:8080"
     networks:
@@ -341,10 +283,8 @@ services:
       Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
       OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      rabbitmq: { condition: service_healthy }
+      redis:    { condition: service_healthy }
     ports:
       - "6006:8080"
     networks:
@@ -375,10 +315,8 @@ services:
       Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
       OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      rabbitmq: { condition: service_healthy }
+      redis:    { condition: service_healthy }
     ports:
       - "6007:8080"
     networks:
@@ -404,10 +342,8 @@ services:
       Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
       OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      rabbitmq: { condition: service_healthy }
+      redis:    { condition: service_healthy }
     ports:
       - "6008:8080"
     networks:
@@ -437,15 +373,16 @@ services:
       Encryption__ActiveKeyVersion: "${ENCRYPTION__ACTIVEKEYVERSION:-1}"
       OpenTelemetry__OtlpEndpoint: "${OPENTELEMETRY__OTLPENDPOINT:-http://localhost:4317}"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      rabbitmq: { condition: service_healthy }
+      redis:    { condition: service_healthy }
     ports:
       - "6009:8080"
     networks:
       - shared-network
 
+  # ============================================================
+  # Wave 3 — UI Portals (Next.js)
+  # ============================================================
   b2c-web:
     build:
       context: src/portals/b2c-web
@@ -455,9 +392,12 @@ services:
       NEXTAUTH_SECRET: "${NEXTAUTH_SECRET}"
       GATEWAY_URL: "http://tbe-gateway:8080"
       GATEWAY_PUBLIC_URL: "${GATEWAY_PUBLIC_URL}"
-      KEYCLOAK_ISSUER: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
-      KEYCLOAK_CLIENT_ID: "tbe-b2c-ui"
-      KEYCLOAK_CLIENT_SECRET: "${TBE_B2C_GATEWAY_CLIENT_SECRET}"
+      KEYCLOAK_B2C_ISSUER: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2c"
+      KEYCLOAK_B2C_CLIENT_ID: "tbe-b2c"
+      KEYCLOAK_B2C_CLIENT_SECRET: "${KEYCLOAK_B2C_CLIENT_SECRET}"
+      KEYCLOAK_B2C_ADMIN_CLIENT_ID: "tbe-b2c-admin"
+      KEYCLOAK_B2C_ADMIN_CLIENT_SECRET: "${KEYCLOAK_B2C_ADMIN_CLIENT_SECRET}"
+      NEXT_PUBLIC_STRIPE_PK: "${STRIPE__PUBLISHABLEKEY}"
     networks:
       - shared-network
 
@@ -471,10 +411,11 @@ services:
       GATEWAY_URL: "http://tbe-gateway:8080"
       GATEWAY_PUBLIC_URL: "${GATEWAY_PUBLIC_URL}"
       KEYCLOAK_B2B_ISSUER: "${KEYCLOAK_PUBLIC_URL}/realms/tbe-b2b"
-      KEYCLOAK_B2B_CLIENT_ID: "tbe-b2b-ui"
-      KEYCLOAK_B2B_CLIENT_SECRET: "${TBE_B2B_GATEWAY_CLIENT_SECRET}"
+      KEYCLOAK_B2B_CLIENT_ID: "tbe-agent-portal"
+      KEYCLOAK_B2B_CLIENT_SECRET: "${KEYCLOAK_B2B_CLIENT_SECRET:-}"
       KEYCLOAK_B2B_ADMIN_CLIENT_ID: "tbe-b2b-admin"
       KEYCLOAK_B2B_ADMIN_CLIENT_SECRET: "${KEYCLOAK_B2B_ADMIN_CLIENT_SECRET:-}"
+      NEXT_PUBLIC_STRIPE_PK: "${STRIPE__PUBLISHABLEKEY}"
     networks:
       - shared-network
 
@@ -498,11 +439,10 @@ services:
 # ============================================================
 # Named volumes for data persistence
 # ============================================================
-
 volumes:
-  # mssql-data:
   rabbitmq-data:
   redis-data:
+
 networks:
   shared-network:
     name: shared-network
